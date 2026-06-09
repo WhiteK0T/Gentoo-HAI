@@ -41,8 +41,9 @@ NETSVC=net.eth0
 NETCONF='# Simple DHCP on eth0 (net.ifnames=0 is set on the kernel cmdline)
 config_eth0="dhcp"'
 
+SCRIPTDIR=$(cd "$(dirname "$0")" && pwd)
 PRESETDIR=
-for d in "$(cd "$(dirname "$0")" && pwd)/presets" ./presets /mnt/cdrom/presets; do
+for d in "$SCRIPTDIR/presets" ./presets /mnt/cdrom/presets; do
   [ -d "$d" ] && PRESETDIR=$d && break
 done
 for p in $PRESET; do
@@ -57,6 +58,23 @@ for p in $PRESET; do
     exit 1
   fi
 done
+
+# ---- SSH key baking ---------------------------------------------------------
+# Provide a public key via SSHKEY (key string or path to a .pub file) or put
+# an authorized_keys file next to install.sh / on the cd. With a baked key,
+# ssh becomes key-only: PermitRootLogin prohibit-password and password
+# authentication off (console password login still works); keep password
+# authentication for ordinary users with SSHPASSAUTH=yes.
+# Without a key: password logins, root over ssh disabled (as before).
+SSHKEY=${SSHKEY:-}
+SSHPASSAUTH=${SSHPASSAUTH:-no}
+[ -n "$SSHKEY" ] && [ -f "$SSHKEY" ] && SSHKEY=$(cat "$SSHKEY")
+if [ -z "$SSHKEY" ]; then
+  for f in "$SCRIPTDIR/authorized_keys" ./authorized_keys /mnt/cdrom/authorized_keys; do
+    [ -f "$f" ] && SSHKEY=$(cat "$f") && break
+  done
+fi
+[ -n "$SSHKEY" ] && echo "Will bake ssh authorized_keys ($(echo "$SSHKEY" | wc -l) line(s)) for root and /etc/skel"
 # -----------------------------------------------------------------------------
 
 if [ -b /dev/nvme0n1 ]; then
@@ -647,7 +665,19 @@ ln -s net.lo net.eth0
 rc-update add watchdog boot
 rc-update add syslog-ng default
 rc-update add *cron* default
-sed -i 's/^#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+if [ -n "${SSHKEY}" ]; then
+  # baked key: root by key only, password authentication off
+  # (new users get the key too via /etc/skel)
+  mkdir -p /root/.ssh /etc/skel/.ssh
+  chmod 700 /root/.ssh /etc/skel/.ssh
+  echo "${SSHKEY}" >> /root/.ssh/authorized_keys
+  echo "${SSHKEY}" >> /etc/skel/.ssh/authorized_keys
+  chmod 600 /root/.ssh/authorized_keys /etc/skel/.ssh/authorized_keys
+  sed -i 's/^#PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+  [ "${SSHPASSAUTH}" != "yes" ] && echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
+else
+  sed -i 's/^#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+fi
 rc-update add sshd default
 rc-update delete netmount
 

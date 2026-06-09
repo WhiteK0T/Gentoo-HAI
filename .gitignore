@@ -4,3 +4,4 @@
 *.qcow2
 kvm_lxgentootest*
 workstation/
+authorized_keys

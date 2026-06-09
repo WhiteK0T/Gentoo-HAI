@@ -80,4 +80,24 @@ sh gentoocd_unpack.sh --preset gateway,xeon          # ISO для реально
 - `TMPFSSIZE` сделан переменной (был захардкоженный 6G).
 - USE-флаг `snmp` убран из базовых (теперь его даёт `gateway`).
 
+## Доступ: SSH-ключ или пароль
+
+Публичный ключ можно «запечь» в установку тремя способами:
+
+```bash
+SSHKEY="ssh-ed25519 AAAA... user@host" sh install.sh   # строкой
+SSHKEY=~/.ssh/id_ed25519.pub sh install.sh             # путём к файлу
+cp ~/.ssh/id_ed25519.pub authorized_keys               # файлом рядом со скриптом
+sh gentoocd_unpack.sh auto --preset minimal            #   (попадёт и на ISO)
+```
+
+С ключом: он кладётся в `/root/.ssh/authorized_keys` и в `/etc/skel/.ssh/`
+(все создаваемые пользователи, включая `sam`, получают его автоматически),
+ssh переводится в key-only режим — `PermitRootLogin prohibit-password`,
+`PasswordAuthentication no`. Вход по паролю в консоли при этом работает.
+Оставить парольный ssh для обычных пользователей: `SSHPASSAUTH=yes`.
+
+Без ключа — прежнее поведение: вход по паролю, root по ssh запрещён.
+Файл `authorized_keys` в корне репозитория в git не попадает (.gitignore).
+
 Напоминание: пароль root по умолчанию `password` — задавайте `SET_PASS`.

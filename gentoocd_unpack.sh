@@ -110,6 +110,8 @@ sed -i "s/ dokeymap/ net.ifnames=0 keymap=${KEYMAP}  autoinstall/" $bootmenufile
 
 # make presets available on the cd for install.sh
 [ -d ../presets ] && cp -ra ../presets .
+# bake the ssh public key if one lies next to the scripts
+[ -f ../authorized_keys ] && cp ../authorized_keys .
 
 if [ "$AUTO" == "YES" ]; then
   echo running with auto - wont stop
