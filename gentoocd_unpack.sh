@@ -73,7 +73,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 # files that contains kernelcmdlines that should be patched
 bootmenufiles="boot/grub/grub.cfg"
-echo 'emerge -uv1 app-cdr/cdrtools sys-fs/squashfs-tools dev-libs/libisoburn sys-fs/mtools  # squashfs-tools needs USE="xz"'
+echo 'emerge -uv1 app-cdr/cdrtools sys-fs/squashfs-tools dev-libs/libisoburn sys-fs/mtools  # squashfs-tools needs USE="lzma" for xz images'
 set -x
 # unmount in case we got something left over since before
 [ -d gentoo_boot_cd ] && umount gentoo_boot_cd
@@ -90,7 +90,7 @@ if [ $DOSQUASH == 1 ]; then
 COMP=$(unsquashfs -s image.squashfs 2>/dev/null | awk '/^Compression/{print $2}')
 if [ -n "$COMP" ] && ! unsquashfs 2>&1 | grep -qw "$COMP"; then
   echo -e "\e[91mERROR: image.squashfs uses '$COMP' compression but unsquashfs does not support it."
-  echo -e "Fix on Gentoo:\n  echo 'sys-fs/squashfs-tools xz lzo lz4 zstd' >> /etc/portage/package.use/squashfs-tools"
+  echo -e "Fix on Gentoo (xz support comes from the 'lzma' USE flag):\n  echo 'sys-fs/squashfs-tools lzma lzo lz4 zstd' >> /etc/portage/package.use/squashfs-tools"
   echo -e "  emerge -1v sys-fs/squashfs-tools\e[0m"
   exit 1
 fi
