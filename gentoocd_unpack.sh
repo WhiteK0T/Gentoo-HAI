@@ -1,5 +1,8 @@
 #!/bin/bash
 # Needed packages for grub-mkrescue emerge -uv1 sys-fs/mtools dev-libs/libisoburn app-cdr/cdrtools
+
+# some su configurations hand root a broken PATH; make sure the basics resolve
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 # check for iso before asking for root
 srciso=install-amd64-minimal-*.iso
 for f in $srciso; do
