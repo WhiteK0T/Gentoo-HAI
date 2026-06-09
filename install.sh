@@ -77,6 +77,8 @@ if [ "$(hostname)" == "livecd" ]; then
 fi
 #IF NOT SET_PASS is set then the password will be "password"
 SET_PASS=${SET_PASS:-password}
+# user account auto-created by the desktop presets (workstation/kde)
+INSTALLUSER=${INSTALLUSER:-sam}
 
 set -x -u
 GHBASEURL="https://raw.githubusercontent.com/ASoft-se/Gentoo-HAI/refs/heads/master"
@@ -688,7 +690,7 @@ fi
 [ -n "${NETSVC}" ] && rc-update add ${NETSVC} default
 
 # run preset chroot hooks (service configuration etc.)
-export ROOTEMAIL="${ROOTEMAIL}" NTPSERVER="${NTPSERVER}"
+export ROOTEMAIL="${ROOTEMAIL}" NTPSERVER="${NTPSERVER}" SET_PASS="${SET_PASS}" INSTALLUSER="${INSTALLUSER}"
 for h in /preset-hooks/*.sh; do
   [ -f "\$h" ] && { echo "Running preset hook \$h"; sh "\$h" || bash; }
 done

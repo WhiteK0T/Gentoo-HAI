@@ -41,8 +41,10 @@ sh gentoocd_unpack.sh --preset gateway,xeon          # ISO для реально
 
 - gcc/glibc исключены из пересборки ради времени — после установки при желании
   выполнить полный `emerge -uvDN world`.
-- Учётная запись пользователя не создаётся (имя неизвестно установщику) —
-  после первой загрузки: `useradd -m -G wheel,users,audio,video,usb,plugdev[,docker,libvirt] имя`.
+- Создаётся пользователь `sam` (переопределить: `INSTALLUSER=имя`, отключить:
+  `INSTALLUSER=""`) с группами wheel/audio/video/… (+docker/libvirt в workstation),
+  wheel получает sudo. Начальный пароль = `SET_PASS` (как у root) — сменить после
+  первого входа.
 - Раскладка X/Wayland настраивается в Plasma; движок задаёт только консольную (`ru`).
 
 ## Интерфейс пресета
