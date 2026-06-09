@@ -17,6 +17,7 @@ ALLPOSITIONAL=()
 POSITIONAL=()
 DOSQUASH=0
 KEYMAP=us
+PRESETARG=""
 while (($#)); do
   ALLPOSITIONAL+=("$1") # save it in an array for later
   case $1 in
@@ -29,7 +30,14 @@ while (($#)); do
   ;;
   --keymap)
     # value for livecd env from https://github.com/gentoo/genkernel/blob/master/defaults/keymaps/keymapList
+    ALLPOSITIONAL+=("$2")
     KEYMAP=$2
+    shift
+  ;;
+  --preset)
+    # preset name(s) for install.sh, comma separated: --preset minimal,xeon
+    ALLPOSITIONAL+=("$2")
+    PRESETARG=$2
     shift
   ;;
   setupdonehalt)
@@ -100,6 +108,9 @@ fi
 # change to defined keymap and add autoinstall
 sed -i "s/ dokeymap/ net.ifnames=0 keymap=${KEYMAP}  autoinstall/" $bootmenufiles
 
+# make presets available on the cd for install.sh
+[ -d ../presets ] && cp -ra ../presets .
+
 if [ "$AUTO" == "YES" ]; then
   echo running with auto - wont stop
   [[ "$SETUPDONEHALT" == "YES" ]] && sed -i 's/ autoinstall$/ autoinstall setupdonehalt/' $bootmenufiles
@@ -113,6 +124,9 @@ else
 echo -e "\n\tStarting separate shell, just exit if no changes should be done.\n\n\tWhen exit, the iso will be rebuilt."
 bash
 fi
+
+# pass preset selection to install.sh via kernel cmdline
+[ -n "$PRESETARG" ] && sed -i "s/ autoinstall/ autoinstall preset=${PRESETARG}/" $bootmenufiles
 
 # rebuild efimg https://gitweb.gentoo.org/proj/catalyst.git/tree/targets/support/create-iso.sh#n256
 clst_target_path=.

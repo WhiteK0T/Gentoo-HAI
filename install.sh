@@ -15,10 +15,48 @@
 # Make sure our root mountpoint exists
 mkdir -p /mnt/gentoo
 
-TIMEZONE=${TIMEZONE:-Europe/Stockholm}
-NTPSERVER=${NTPSERVER:-ntp.se}
-KEYMAP=${KEYMAP:-sv-latin1}
-ROOTEMAIL=${ROOTEMAIL:-root@asoft.se}
+TIMEZONE=${TIMEZONE:-Europe/Moscow}
+NTPSERVER=${NTPSERVER:-ru.pool.ntp.org}
+KEYMAP=${KEYMAP:-ru}
+ROOTEMAIL=${ROOTEMAIL:-uyiraqoyir041@gmail.com}
+# size of the tmpfs mounted on /var/tmp (build space); reduce on low-RAM machines
+TMPFSSIZE=${TMPFSSIZE:-6G}
+
+# ---- Preset loading --------------------------------------------------------
+# Select with PRESET env var or preset= on the kernel cmdline.
+# Combine several with commas: PRESET="gateway,xeon" sh install.sh
+PRESET=${PRESET:-}
+for w in $(cat /proc/cmdline); do case $w in preset=*) PRESET=${w#preset=};; esac; done
+PRESET=${PRESET:-minimal}
+PRESET=${PRESET//,/ }
+
+# interface filled in by preset files (presets/<name>.sh)
+PRESET_PACKAGES=""
+PRESET_USE=""
+PRESET_PACKAGE_USE=""
+PRESET_KERNEL_EXTRA=""
+PRESET_HOOKS=""
+NETSVC=net.eth0
+NETCONF='# Simple DHCP on eth0 (net.ifnames=0 is set on the kernel cmdline)
+config_eth0="dhcp"'
+
+PRESETDIR=
+for d in "$(cd "$(dirname "$0")" && pwd)/presets" ./presets /mnt/cdrom/presets; do
+  [ -d "$d" ] && PRESETDIR=$d && break
+done
+for p in $PRESET; do
+  if [ -n "$PRESETDIR" ] && [ -f "$PRESETDIR/$p.sh" ]; then
+    echo "Loading preset: $p"
+    . "$PRESETDIR/$p.sh"
+    [ -f "$PRESETDIR/$p.chroot.sh" ] && PRESET_HOOKS="$PRESET_HOOKS $PRESETDIR/$p.chroot.sh"
+  elif [ "$p" == "minimal" ]; then
+    echo "No presets dir found, continuing with built-in minimal defaults"
+  else
+    echo "ERROR: preset '$p' not found (looked in '${PRESETDIR:-<no presets dir>}')"
+    exit 1
+  fi
+done
+# -----------------------------------------------------------------------------
 
 if [ -b /dev/nvme0n1 ]; then
   IDEV=${IDEV:-/dev/nvme0n1}
@@ -48,7 +86,9 @@ pid_ntp=$!
 
 [ -d /sys/firmware/efi ] && PLATFORM=efi || PLATFORM=pcbios
 
-find /sys/devices/ -name "idVendor" -exec grep -l "051d" {} + | while read f; do
+# (upstream used a pipe to while which lost the variable in a subshell)
+APCUPSDTOOLS=""
+for f in $(find /sys/devices/ -name "idVendor" -exec grep -l "051d" {} + 2>/dev/null); do
     echo we have an APC device, probably UPS add apcupsd
     cat "$(dirname "$f")/manufacturer" "$(dirname "$f")/product"
     APCUPSDTOOLS=apcupsd
@@ -149,7 +189,7 @@ wait $pid_ntp
 [ -f portagehelper.sh ] && cp portagehelper.sh /mnt/gentoo
 cd /mnt/gentoo || exit 1
 #cleanup in case of previous try...
-[ -f "*.tar.{bz2,xz,sqfs}" ] && rm *.tar.{bz2,xz,sqfs}
+rm -f stage3-*.tar.bz2 stage3-*.tar.xz 2>/dev/null
 [ -f portagehelper.sh ] || curl -L --remote-name-all ${GHBASEURL}/portagehelper.sh -O
 sha512sum -c <<<"fc4727ec899d46b53637917bf6fe69d51645d28d1fd2cd10bd989aa0787af8fc236bcc517d83e0ee575a15f70a641c597000cf53fc25039e3caec9690848c152  portagehelper.sh" || bash
 . ./portagehelper.sh || bash
@@ -192,7 +232,7 @@ ${IDEVP}2		/boot/efi		vfat		noauto,noatime	1 2
 ${IDEVP}4		/		ext4		discard,noatime	0 1
 LABEL=swap0		none		swap		sw		0 0
 
-none			/var/tmp	tmpfs		size=6G,nr_inodes=1M 0 0
+none			/var/tmp	tmpfs		size=${TMPFSSIZE},nr_inodes=1M 0 0
 " >> etc/fstab
 sed -i '/\/dev\/BOOT.*/d' etc/fstab
 sed -i '/\/dev\/ROOT.*/d' etc/fstab
@@ -213,7 +253,7 @@ echo "# add valid -march= to CFLAGS" >> $MAKECONF
 echo "MAKEOPTS=\"-j$(nproc)\"" >> $MAKECONF
 echo "EMERGE_DEFAULT_OPTS=\"\${EMERGE_DEFAULT_OPTS} --getbinpkg --jobs-tmpdir-require-free-gb=1\"" >> $MAKECONF
 echo "FEATURES=\"parallel-fetch buildpkg\"" >> $MAKECONF
-echo "USE=\"\${USE} -X iproute2 logrotate snmp\"" >> $MAKECONF
+echo "USE=\"\${USE} -X iproute2 logrotate ${PRESET_USE}\"" >> $MAKECONF
 
 grep -q autoinstall /proc/cmdline || nano $MAKECONF
 
@@ -222,40 +262,8 @@ echo "keymap=\"$KEYMAP\"" >> etc/conf.d/keymaps
 echo "rc_logger=\"YES\"" >> etc/rc.conf
 echo "rc_sys=\"\"" >> etc/rc.conf
 
-cat > etc/conf.d/net << EOF
-# https://wiki.gentoo.org/wiki/Netifrc/Brctl_Migration
-config_br0="dhcp"
-bridge_br0="eth0"
-bridge_forward_delay_br0=0
-bridge_stp_state_br0=0
-dhcp_br0="nodns nontp nonis nosendhost"
-
-#config_br0="192.168.0.251/24"
-#routes_br0="default via 192.168.0.254 table default"
-
-config_eth0="null"
-rc_net_br0_need="net.eth0"
-
-config_eth1="null"
-bridge_br1="eth1"
-
-config_br1="10.100.1.254/24"
-bridge_forward_delay_br1=0
-bridge_stp_state_br1=0
-
-vlans_eth1="101 120 140"
-config_eth1_101="null"
-config_eth1_120="10.100.20.254/24"
-config_eth1_140="10.100.40.254/24"
-
-
-tuntap_vpnUA="tap"
-#keep same MAC
-mac_vpnUA="00:14:0A:01:64:65"
-rc_before_vpnUA="openvpn.vpnua"
-config_vpnUA="10.1.100.101/24"
-routes_vpnUA="10.100.0.0/16 via 10.1.100.1"
-EOF
+# network config comes from the active preset (default: plain DHCP on eth0)
+echo "${NETCONF}" > etc/conf.d/net
 grep -q autoinstall /proc/cmdline || nano etc/conf.d/net
 
 #generate chroot script
@@ -283,7 +291,8 @@ ln -snf /proc/self/mounts /etc/mtab
 mkdir -p /etc/portage/package.accept_keywords
 mkdir -p /etc/portage/package.use
 grep -q gentoo-sources /etc/portage/package.accept_keywords/* || echo sys-kernel/gentoo-sources > /etc/portage/package.accept_keywords/kernel &
-grep -q net-dns/bind /etc/portage/package.use/* || echo net-dns/bind dlz idn caps threads >> /etc/portage/package.use/bind &
+# package.use entries provided by the active presets
+echo "${PRESET_PACKAGE_USE}" > /etc/portage/package.use/preset
 echo touch to disable the unpredictable "PredictableNetworkInterfaceNames"
 mkdir -p /etc/udev/rules.d/
 touch /etc/udev/rules.d/80-net-name-slot.rules &
@@ -299,7 +308,6 @@ if [[ ! -z "${APCUPSDTOOLS:=}" ]]; then
     grep -q sys-apps/util-linux /etc/portage/package.use/* || echo sys-apps/util-linux tty-helpers >> /etc/portage/package.use/apcupsd
 fi
 grep -q net-firewall/nftables /etc/portage/package.use/* || echo net-firewall/nftables xtables >> /etc/portage/package.use/nftables
-grep -q net-analyzer/net-snmp /etc/portage/package.use/* || echo net-analyzer/net-snmp lm-sensors >> /etc/portage/package.use/net-snmp
 grep -q sys-kernel/installkernel /etc/portage/package.use/* || echo sys-kernel/installkernel grub >> /etc/portage/package.use/grub
 [[ ! -z "${NVMETOOLS:=}" ]] && (grep -q nvme /etc/portage/package.accept_keywords/* || echo ${NVMETOOLS} > /etc/portage/package.accept_keywords/nvme) &
 
@@ -317,7 +325,6 @@ etc-update --automode -5
 
 wait
 time emerge -uv -j8 app-arch/lz4 sys-kernel/installkernel dosfstools gentoo-sources pciutils usbutils ntp iproute2 sys-apps/memtest86+ ${NVMETOOLS} || bash
-mkdir /tftproot
 lspci
 
 eselect kernel set 1
@@ -511,6 +518,9 @@ CONFIG_NET_SCH_FQ_CODEL=m
 # if we have nvme hardware
 ${NVMEKERNEL:-}
 
+# preset kernel extras
+${PRESET_KERNEL_EXTRA}
+
 # Serial console
 CONFIG_SERIAL_8250=y
 CONFIG_SERIAL_8250_CONSOLE=y
@@ -620,30 +630,20 @@ ls -lh /boot; find /boot/efi; efibootmgr
 
 cd /etc
 ln -fs /usr/share/zoneinfo/$TIMEZONE localtime
-emerge -uv -j8 --keep-going y iptables nftables net-snmp dev-vcs/git ${APCUPSDTOOLS} iotop iftop ddrescue sys-apps/pv tcpdump nmap netkit-telnetd dmidecode hdparm \
- mlocate postfix bind dhcp sys-apps/watchdog net-ftp/tftp-hpa dhcpcd app-misc/mc smartmontools syslog-ng virtual/cron logrotate lsof ${BATTERYTOOLS:=} || bash
+emerge -uv -j8 --keep-going y iptables nftables dev-vcs/git ${APCUPSDTOOLS} iotop iftop ddrescue sys-apps/pv tcpdump dmidecode hdparm \
+ mlocate sys-apps/watchdog dhcpcd app-misc/mc smartmontools syslog-ng virtual/cron logrotate lsof ${BATTERYTOOLS:=} ${PRESET_PACKAGES} || bash
 #rerun make sure up2date
 time emerge -uvDN -j4 world --exclude gcc glibc || bash
 etc-update --automode -5
-sed -i 's/^#CHROOT=/CHROOT=/' /etc/conf.d/named
-emerge --config net-dns/bind
-find /chroot/dns
-#TODO sed fix syslog unix-stream("/chroot/dns/dev/log");
-sed -i 's/^# DHCPD_CHROOT=/DHCPD_CHROOT=/' /etc/conf.d/dhcpd
-#TODO syslog unix-stream("...dhcp");
-dispatch-conf
-
 #todo fix with sed ... but virtual machine dont save clock ;)
 #/etc/init.d/hwclock save
 sed -i 's/^c1:12345:respawn:\/sbin\/agetty .* tty1 linux\$/& --noclear/' /etc/inittab || bash
 cd /etc/init.d
 ln -s net.lo net.eth0
-ln -s net.lo net.br0
+[ "${NETSVC}" != "net.eth0" ] && ln -sf net.lo ${NETSVC}
 rc-update add watchdog boot
 rc-update add syslog-ng default
 rc-update add *cron* default
-sed -i 's#^\#INTFTPD_PATH="/tftproot/"#INTFTPD_PATH="/tftproot/"#' /etc/conf.d/in.tftpd
-rc-update add in.tftpd default
 sed -i 's/^#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
 rc-update add sshd default
 rc-update delete netmount
@@ -661,18 +661,11 @@ rc-update add local default
 sh /etc/local.d/remove.net.rules.start
 echo exit 0 >> /etc/local.d/remove.net.rules.start
 
-sed -i 's/^smtp.*inet/#&/' /etc/postfix/master.cf
-rc-update add postfix default
-echo -e "# Use newaliases after change\nroot:           $ROOTEMAIL" >> /etc/mail/aliases
-newaliases
-
 # TODO detect if username should be included or not
 #sed -i 's/\troot\t/\t/' /etc/crontab
 echo -e "*/30  *  * * *\troot\tsntp -S $NTPSERVER > /dev/null" >> /etc/crontab
 # some variants of cron needs to have default cron installed
 #crontab /etc/crontab
-
-rc-update add named default
 
 if (grep -q usegitportage /proc/cmdline); then
 # move to git based portage tree
@@ -691,14 +684,22 @@ fi
 
 #todo... if vmware emerge open-vm-tools?
 
-rc-update add net.br0 default
+rc-update add ${NETSVC} default
+
+# run preset chroot hooks (service configuration etc.)
+export ROOTEMAIL="${ROOTEMAIL}" NTPSERVER="${NTPSERVER}"
+for h in /preset-hooks/*.sh; do
+  [ -f "\$h" ] && { echo "Running preset hook \$h"; sh "\$h" || bash; }
+done
 
 umount /var/tmp
 EOF
 chmod a+x chrootstart.sh
+mkdir -p preset-hooks
+for h in ${PRESET_HOOKS}; do cp "$h" preset-hooks/; done
 
 time chroot . ./chrootstart.sh
-rm chrootstart.sh
+rm -rf chrootstart.sh preset-hooks
 # Delete temporary change to avoid insufficient free space, emerge job parallelism reduced
 sed -i 's/--jobs-tmpdir-require-free-gb=[0-9]\+ \?//g' $MAKECONF
 

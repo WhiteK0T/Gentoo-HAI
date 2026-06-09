@@ -3,6 +3,10 @@
 Gentoo - Headless Auto Installer, Perfect for initial Gentoo (server) setup.
 (hai also becomes a phun in Japanese)
 
+**Fork note:** this fork splits the installer into an engine (`install.sh`)
+and presets (`presets/*.sh`): minimal / gateway / xeon, selected with
+`PRESET=name[,name]` or `preset=` on the kernel cmdline. See `PRESETS.md`.
+
 Use a livecd and manually download https://tinyurl.com/gto-hai (https://raw.githubusercontent.com/ASoft-se/Gentoo-HAI/master/install.sh)
 and run it to make the installation..
 ##### Example:
