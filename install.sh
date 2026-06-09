@@ -89,10 +89,25 @@ IDEVP=${IDEV}
 # if disk name ends with number, then partition is sepparated with p
 echo ${IDEV} | grep -q -e "[0-9]$" && IDEVP=${IDEV}p
 
-if [ "$(hostname)" == "livecd" ]; then
-  echo Change hostname before you continue since it will be used for the created host.
-  exit 1
+# Decide the hostname of the installed system. Order: INSTALL_HOSTNAME env,
+# hostname= on the kernel cmdline, the current livecd hostname (if changed from
+# the default), or gtestinst when auto-installing. We capture it in a variable
+# because NetworkManager on the livecd keeps resetting the live hostname back to
+# "livecd", so $(hostname) is unreliable later when we write conf.d/hostname.
+INSTALL_HOSTNAME=${INSTALL_HOSTNAME:-}
+for w in $(cat /proc/cmdline); do case $w in hostname=*) INSTALL_HOSTNAME=${w#hostname=};; esac; done
+if [ -z "$INSTALL_HOSTNAME" ]; then
+  if [ "$(hostname)" != "livecd" ]; then
+    INSTALL_HOSTNAME=$(hostname)
+  elif grep -q autoinstall /proc/cmdline; then
+    INSTALL_HOSTNAME=gtestinst
+  else
+    echo Change hostname before you continue since it will be used for the created host.
+    echo "Or set it explicitly: INSTALL_HOSTNAME=myhost sh install.sh"
+    exit 1
+  fi
 fi
+hostname "$INSTALL_HOSTNAME"
 #IF NOT SET_PASS is set then the password will be "password"
 SET_PASS=${SET_PASS:-password}
 # user account auto-created by the desktop presets (workstation/kde)
@@ -244,7 +259,7 @@ cp /etc/resolv.conf etc
 # make sure we are done with root unpack...
 
 echo "# Set to the hostname of this machine
-hostname=\"$(hostname)\"
+hostname=\"${INSTALL_HOSTNAME}\"
 " > etc/conf.d/hostname
 #change fstab to match disk layout
 echo -e "
