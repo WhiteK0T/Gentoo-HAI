@@ -137,6 +137,9 @@ fi
 clst_target_path=.
 
 popd
+# grub-mkrescue silently skips boot modes whose grub modules are missing on the host
+[ -d /usr/lib/grub/i386-pc ] || echo -e "\e[91mWARNING: no /usr/lib/grub/i386-pc - ISO will NOT boot on BIOS/SeaBIOS (set GRUB_PLATFORMS=\"efi-64 pc\" and re-emerge grub)\e[0m"
+[ -d /usr/lib/grub/x86_64-efi ] || echo -e "\e[91mWARNING: no /usr/lib/grub/x86_64-efi - ISO will NOT boot on UEFI\e[0m"
 echo "Creating ISO ..."
 grub-mkrescue -joliet -iso-level 3 -o install-amd64-mod.iso gentoo_boot_cd/
 
