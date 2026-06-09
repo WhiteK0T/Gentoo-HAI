@@ -118,7 +118,7 @@ sed -i "s/ dokeymap/ net.ifnames=0 keymap=${KEYMAP}  autoinstall/" $bootmenufile
 
 if [ "$AUTO" == "YES" ]; then
   echo running with auto - wont stop
-  [[ "$SETUPDONEHALT" == "YES" ]] && sed -i 's/ autoinstall$/ autoinstall setupdonehalt/' $bootmenufiles
+  [[ "$SETUPDONEHALT" == "YES" ]] && sed -i 's/ autoinstall/ autoinstall setupdonehalt/' $bootmenufiles
   sed -i 's/ autoinstall/ autoinstall console=tty0 console=ttyS0,115200/' $bootmenufiles
   # use console for -nographics, sga and curses
   sed -i 's/vga=791//' $bootmenufiles
@@ -140,8 +140,12 @@ popd
 # grub-mkrescue silently skips boot modes whose grub modules are missing on the host
 [ -d /usr/lib/grub/i386-pc ] || echo -e "\e[91mWARNING: no /usr/lib/grub/i386-pc - ISO will NOT boot on BIOS/SeaBIOS (set GRUB_PLATFORMS=\"efi-64 pc\" and re-emerge grub)\e[0m"
 [ -d /usr/lib/grub/x86_64-efi ] || echo -e "\e[91mWARNING: no /usr/lib/grub/x86_64-efi - ISO will NOT boot on UEFI\e[0m"
-echo "Creating ISO ..."
-grub-mkrescue -joliet -iso-level 3 -o install-amd64-mod.iso gentoo_boot_cd/
+# keep the original volume label: the cd kernel cmdline mounts the live
+# medium by it (dracut root=live:CDLABEL=...)
+VOLID=$(isoinfo -d -i $srciso 2>/dev/null | sed -n 's/^Volume id: //p')
+[ -z "$VOLID" ] && echo -e "\e[91mWARNING: could not read volume id from $srciso - the modified iso will likely not boot\e[0m"
+echo "Creating ISO (volid: ${VOLID}) ..."
+grub-mkrescue -joliet -iso-level 3 -volid "${VOLID}" -o install-amd64-mod.iso gentoo_boot_cd/
 
 umount gentoo_boot_cd
 rm -rf gentoo_boot_cd
