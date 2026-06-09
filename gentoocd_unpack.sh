@@ -86,11 +86,15 @@ pushd gentoo_boot_cd || exit 1
 isoinfo -R -i ../$srciso -X || exit 1
 
 if [ $DOSQUASH == 1 ]; then
-# fail early if unsquashfs lacks the decompressor the image uses
-COMP=$(unsquashfs -s image.squashfs 2>/dev/null | awk '/^Compression/{print $2}')
-if [ -n "$COMP" ] && ! unsquashfs 2>&1 | grep -qw "$COMP"; then
-  echo -e "\e[91mERROR: image.squashfs uses '$COMP' compression but unsquashfs does not support it."
-  echo -e "Fix on Gentoo (xz support comes from the 'lzma' USE flag):\n  echo 'sys-fs/squashfs-tools lzma lzo lz4 zstd' >> /etc/portage/package.use/squashfs-tools"
+# fail early if unsquashfs cannot actually decompress this image (e.g. an xz
+# image but squashfs-tools built without USE=lzma). -s reads only the
+# uncompressed superblock, so test a real listing which forces metadata
+# decompression.
+if ! unsquashfs -l image.squashfs >/dev/null 2>&1; then
+  COMP=$(unsquashfs -s image.squashfs 2>/dev/null | awk '/^Compression/{print $2}')
+  echo -e "\e[91mERROR: unsquashfs cannot decompress image.squashfs (compression: ${COMP:-unknown})."
+  echo -e "On Gentoo enable the matching USE flag (xz images need 'lzma'):"
+  echo -e "  echo 'sys-fs/squashfs-tools lzma lzo lz4 zstd' >> /etc/portage/package.use/squashfs-tools"
   echo -e "  emerge -1v sys-fs/squashfs-tools\e[0m"
   exit 1
 fi
