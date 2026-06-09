@@ -1,10 +1,13 @@
 
 if [ "$(hostname)" == "livecd" ] && (tty | grep -q -e tty1\$ -e ttyS0\$)
 then
-  [ -f /mnt/cdrom/g-install.sh ] && cp /mnt/cdrom/g-install.sh .
-  [ -f /mnt/cdrom/portagehelper.sh ] && cp /mnt/cdrom/portagehelper.sh .
-  [ -d /mnt/cdrom/presets ] && cp -r /mnt/cdrom/presets .
-  [ -f /mnt/cdrom/authorized_keys ] && cp /mnt/cdrom/authorized_keys .
+  # genkernel cds mount the medium on /mnt/cdrom, dracut cds on /run/initramfs/live
+  for cdroot in /mnt/cdrom /run/initramfs/live; do
+    [ -f $cdroot/g-install.sh ] && cp $cdroot/g-install.sh .
+    [ -f $cdroot/portagehelper.sh ] && cp $cdroot/portagehelper.sh .
+    [ -d $cdroot/presets ] && cp -r $cdroot/presets .
+    [ -f $cdroot/authorized_keys ] && cp $cdroot/authorized_keys .
+  done
   setterm -blank 0
   hostname gtestinst
   #IF NOT SET_PASS is set then the password will be "password"

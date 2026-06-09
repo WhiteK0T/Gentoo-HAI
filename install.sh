@@ -43,7 +43,7 @@ config_eth0="dhcp"'
 
 SCRIPTDIR=$(cd "$(dirname "$0")" && pwd)
 PRESETDIR=
-for d in "$SCRIPTDIR/presets" ./presets /mnt/cdrom/presets; do
+for d in "$SCRIPTDIR/presets" ./presets /mnt/cdrom/presets /run/initramfs/live/presets; do
   [ -d "$d" ] && PRESETDIR=$d && break
 done
 for p in $PRESET; do
@@ -70,7 +70,7 @@ SSHKEY=${SSHKEY:-}
 SSHPASSAUTH=${SSHPASSAUTH:-no}
 [ -n "$SSHKEY" ] && [ -f "$SSHKEY" ] && SSHKEY=$(cat "$SSHKEY")
 if [ -z "$SSHKEY" ]; then
-  for f in "$SCRIPTDIR/authorized_keys" ./authorized_keys /mnt/cdrom/authorized_keys; do
+  for f in "$SCRIPTDIR/authorized_keys" ./authorized_keys /mnt/cdrom/authorized_keys /run/initramfs/live/authorized_keys; do
     [ -f "$f" ] && SSHKEY=$(cat "$f") && break
   done
 fi

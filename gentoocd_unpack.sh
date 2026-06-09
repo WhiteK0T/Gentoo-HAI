@@ -18,7 +18,10 @@ echo will be using $srciso as source
 
 ALLPOSITIONAL=()
 POSITIONAL=()
-DOSQUASH=0
+# modern (dracut-based) cds never run cdupdate.sh from the cd root, so the
+# bashrc hook must be patched into the squashfs; nosquash restores the old
+# genkernel-era behavior for old isos
+DOSQUASH=1
 KEYMAP=us
 PRESETARG=""
 while (($#)); do
@@ -30,6 +33,9 @@ while (($#)); do
   ;;
   dosquash)
     DOSQUASH=1
+  ;;
+  nosquash)
+    DOSQUASH=0
   ;;
   --keymap)
     # value for livecd env from https://github.com/gentoo/genkernel/blob/master/defaults/keymaps/keymapList
@@ -71,7 +77,7 @@ set -x
 [ -d gentoo_boot_cd ] && umount gentoo_boot_cd
 [ ! -d gentoo_boot_cd ] && (mkdir gentoo_boot_cd || exit 1)
 echo Make all changes in a tmpfs for performance, and saving on SSD writes.
-mount none -t tmpfs gentoo_boot_cd -o size=3G,nr_inodes=1048576
+mount none -t tmpfs gentoo_boot_cd -o size=6G,nr_inodes=1048576
 pushd gentoo_boot_cd || exit 1
 # 7z x is broken in version 16.02, it does work with 9.20
 # use isoinfo extraction from cdrtools instead
