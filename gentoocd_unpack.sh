@@ -24,6 +24,8 @@ POSITIONAL=()
 DOSQUASH=1
 KEYMAP=us
 PRESETARG=""
+# root password for the livecd and the installed system (baked into the squashfs)
+SET_PASS=${SET_PASS:-}
 while (($#)); do
   ALLPOSITIONAL+=("$1") # save it in an array for later
   case $1 in
@@ -66,12 +68,12 @@ POSITIONAL=${POSITIONAL[@]}
 # check for root since we are using tmpfs and need root to not risk getting incorrect permissions on the new squashfs
 if [[ $EUID -ne 0 ]]; then
   echo "This script must be run as root (to mount tmpfs), please provide password to su" 1>&2
-  su -c "/bin/sh $0 ${ALLPOSITIONAL}" && [ "$AUTO" == "YES" ] && (rm -f kvm_lxgentootest.qcow2; sh test_w_qemu.sh -cdrom install-amd64-mod.iso ${POSITIONAL})
+  su -c "SET_PASS='${SET_PASS}' /bin/sh $0 ${ALLPOSITIONAL}" && [ "$AUTO" == "YES" ] && (rm -f kvm_lxgentootest.qcow2; sh test_w_qemu.sh -cdrom install-amd64-mod.iso ${POSITIONAL})
   exit
 fi
 # files that contains kernelcmdlines that should be patched
 bootmenufiles="boot/grub/grub.cfg"
-echo emerge -uv1 cdrtools squashfs-tools dev-libs/libisoburn mtools
+echo 'emerge -uv1 app-cdr/cdrtools sys-fs/squashfs-tools dev-libs/libisoburn sys-fs/mtools  # squashfs-tools needs USE="xz"'
 set -x
 # unmount in case we got something left over since before
 [ -d gentoo_boot_cd ] && umount gentoo_boot_cd
@@ -84,6 +86,14 @@ pushd gentoo_boot_cd || exit 1
 isoinfo -R -i ../$srciso -X || exit 1
 
 if [ $DOSQUASH == 1 ]; then
+# fail early if unsquashfs lacks the decompressor the image uses
+COMP=$(unsquashfs -s image.squashfs 2>/dev/null | awk '/^Compression/{print $2}')
+if [ -n "$COMP" ] && ! unsquashfs 2>&1 | grep -qw "$COMP"; then
+  echo -e "\e[91mERROR: image.squashfs uses '$COMP' compression but unsquashfs does not support it."
+  echo -e "Fix on Gentoo:\n  echo 'sys-fs/squashfs-tools xz lzo lz4 zstd' >> /etc/portage/package.use/squashfs-tools"
+  echo -e "  emerge -1v sys-fs/squashfs-tools\e[0m"
+  exit 1
+fi
 unsquashfs image.squashfs || exit 1
 rm image.squashfs
 # mv squashfs-root ~/squashroot
@@ -95,6 +105,8 @@ mkdir -p squashfs-root/lib/udev/rules.d
 echo > squashfs-root/lib/udev/rules.d/80-net-name-slot.rules
 echo > squashfs-root/lib/udev/rules.d/80-net-setup-link.rules
 
+# bake the chosen root password in so the addon and g-install.sh pick it up
+[ -n "${SET_PASS}" ] && echo "export SET_PASS='${SET_PASS}'" >> squashfs-root/root/.bashrc
 cat ../cdhelpers/gentoo_cd_bashrc_addon >> squashfs-root/root/.bashrc
 mksquashfs squashfs-root image.squashfs || exit 1
 rm -rf squashfs-root
