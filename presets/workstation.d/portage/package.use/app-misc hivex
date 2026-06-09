@@ -1,0 +1,3 @@
+# required by app-emulation/libguestfs-1.54.1-r1::gentoo
+# required by app-emulation/libguestfs[libvirt,python] (argument)
+>=app-misc/hivex-1.3.24-r1 ocaml

@@ -1,0 +1,12 @@
+# Блокируем установку старых слотов открытого исходного кода
+=dev-java/openjdk-21*
+=dev-java/openjdk-11*
+
+# Блокируем бинарные версии
+=dev-java/openjdk-bin-21*
+#=dev-java/openjdk-bin-17*
+=dev-java/openjdk-bin-11*
+
+# Опционально: блокируем виртуалы, если они тянутся явно
+=virtual/jdk-21*
+=virtual/jdk-11*

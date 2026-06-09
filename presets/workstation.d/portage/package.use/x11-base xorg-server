@@ -1,0 +1,4 @@
+# required by www-client/firefox-115.8.0::gentoo[X,pgo]
+# required by @selected
+# required by @world (argument)
+>=x11-base/xorg-server-21.1.11 xvfb

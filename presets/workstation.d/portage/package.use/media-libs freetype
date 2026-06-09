@@ -1,0 +1,7 @@
+# required by media-libs/sdl2-ttf-2.24.0::gentoo
+# required by net-misc/freerdp-3.14.1::gentoo[sdl]
+# required by kde-plasma/krdp-6.3.5-r2::gentoo
+# required by kde-plasma/plasma-meta-6.3.5-r2::gentoo[rdp]
+# required by @selected
+# required by @world (argument)
+>=media-libs/freetype-2.13.3 harfbuzz

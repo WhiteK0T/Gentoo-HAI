@@ -1,0 +1,3 @@
+# required by net-fs/samba-4.23.6::gentoo
+# required by net-fs/cifs-utils-7.5::gentoo[acl]
+>=net-libs/ngtcp2-1.22.0 gnutls

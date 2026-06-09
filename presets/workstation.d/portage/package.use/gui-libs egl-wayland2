@@ -1,0 +1,5 @@
+# required by x11-drivers/nvidia-drivers-595.58.03::gentoo[wayland]
+# required by app-crypt/hashcat-7.1.2-r1::gentoo[video_cards_nvidia]
+# required by @selected
+# required by @world (argument)
+>=gui-libs/egl-wayland2-1.0.1 abi_x86_32

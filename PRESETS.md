@@ -34,9 +34,16 @@ sh gentoocd_unpack.sh --preset gateway,xeon          # ISO для реально
 | `minimal` | База движка: sshd (`PermitRootLogin no`), cron, syslog-ng, logrotate, smartmontools, iotop/iftop/tcpdump, mc, watchdog, nftables/iptables, git. Сеть — DHCP на eth0. Ничего не добавляет — служит шаблоном. |
 | `gateway` | Стек автора оригинала: bind (chroot) + dhcpd (chroot, в runlevel не добавлен — сначала настроить subnets) + postfix (только локальная почта, алиас root → `ROOTEMAIL`) + tftp-hpa (PXE) + net-snmp + nmap. Сеть — мост br0 поверх eth0. |
 | `xeon` | Железо-надстройка для сервера на Xeon E5450 (8 ГБ RAM): tmpfs сборки урезан до 4G, тяжёлые пакеты (qtwebengine, firefox, gcc, rust…) собираются на диске через `package.env`, nouveau и coretemp в ядре, `VIDEO_CARDS="nouveau"`. Комбинировать: `minimal,xeon`. HDD (второй диск) установщик не трогает — разметить вручную после первой загрузки. |
+| `workstation` | Реплика основной системы: профиль desktop/plasma, Plasma 6 + NVIDIA/CUDA, NetworkManager, docker/libvirt/samba, Java/Haskell, медиастек. World-файл и конфиг portage основной системы лежат в `presets/workstation.d/` и копируются в систему хуком. `-march=native` вместо skylake, российские зеркала, `ACCEPT_LICENSE="*"`. ccache/distcc сознательно не переносятся (настройка под хост). |
+| `kde` | Лёгкая GUI-надстройка: профиль desktop/plasma, plasma-meta + kdecore-meta + sddm + NetworkManager. Для QEMU сама ставит `VIDEO_CARDS="virtio"`. Комбинировать последним: `minimal,kde`, `minimal,xeon,kde`. |
 
-Планируются: `workstation` (набор с основной системы — нужны world-файл,
-`rc-update show default`, USE из make.conf) и `kde` (GUI-надстройка).
+Замечания к `workstation`/`kde`:
+
+- gcc/glibc исключены из пересборки ради времени — после установки при желании
+  выполнить полный `emerge -uvDN world`.
+- Учётная запись пользователя не создаётся (имя неизвестно установщику) —
+  после первой загрузки: `useradd -m -G wheel,users,audio,video,usb,plugdev[,docker,libvirt] имя`.
+- Раскладка X/Wayland настраивается в Plasma; движок задаёт только консольную (`ru`).
 
 ## Интерфейс пресета
 
@@ -48,15 +55,18 @@ sh gentoocd_unpack.sh --preset gateway,xeon          # ISO для реально
 |---|---|
 | `PRESET_PACKAGES` | пакеты, добавляемые к основному emerge |
 | `PRESET_USE` | глобальные USE-флаги в make.conf |
+| `BASEUSE` | базовые USE движка (по умолчанию `-X iproute2 logrotate`; десктоп-пресеты убирают `-X`) |
 | `PRESET_PACKAGE_USE` | строки для `/etc/portage/package.use/preset` |
 | `PRESET_KERNEL_EXTRA` | строки, дописываемые в `.config` ядра |
 | `TMPFSSIZE` | размер tmpfs `/var/tmp` (сборочное место), по умолчанию 6G |
 | `NETCONF` | полное содержимое `/etc/conf.d/net` |
-| `NETSVC` | служба `net.*`, добавляемая в default runlevel (по умолчанию `net.eth0`) |
+| `NETSVC` | служба `net.*`, добавляемая в default runlevel (по умолчанию `net.eth0`; пустая строка — netifrc не включать, например при NetworkManager) |
 
 Опционально `presets/<имя>.chroot.sh` — хук, выполняемый **внутри chroot**
 после основного emerge (настройка служб, rc-update и т.п.). Хуку доступны
-`ROOTEMAIL` и `NTPSERVER` из окружения. При ошибке хука установщик, как и
+`ROOTEMAIL` и `NTPSERVER` из окружения. Данные для хука можно положить в
+`presets/<имя>.d/` — каталог копируется в chroot рядом с хуком
+(`/preset-hooks/<имя>.d/`). При ошибке хука установщик, как и
 везде, падает в интерактивный shell (`|| bash`) — починить и `exit`.
 
 ## Прочие отличия форка от оригинала

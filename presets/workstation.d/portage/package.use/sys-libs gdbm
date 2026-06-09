@@ -1,0 +1,10 @@
+# required by sys-libs/pam-1.7.0_p20241230-r3::gentoo[-berkdb]
+# required by sys-apps/util-linux-2.40.4::gentoo[pam]
+# required by dev-lang/python-3.13.2::gentoo
+# required by dev-build/ninja-1.12.1::gentoo
+# required by app-alternatives/ninja-1::gentoo[reference]
+# required by media-libs/lilv-0.24.24::gentoo
+# required by media-sound/audacity-3.4.2-r1::gentoo[lv2]
+# required by @selected
+# required by @world (argument)
+>=sys-libs/gdbm-1.24 abi_x86_32

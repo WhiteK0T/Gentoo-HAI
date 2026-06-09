@@ -1,0 +1,7 @@
+# required by net-im/telegram-desktop-4.15.0::gentoo
+# required by net-im/telegram-desktop-5.12.3-r4::gentoo
+# required by kde-apps/kdenlive-22.12.3::gentoo
+# required by kde-apps/kdenlive (argument)
+# required by @selected
+# required by @world (argument)
+>=media-video/ffmpeg-6.1.2-r1 vpx libass opus webp vaapi v4l openssl nvenc cuda vdpau ssh samba opengl opencl cpudetection X threads network encode lame amrenc twolame

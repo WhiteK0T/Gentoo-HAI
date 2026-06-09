@@ -36,6 +36,7 @@ PRESET_USE=""
 PRESET_PACKAGE_USE=""
 PRESET_KERNEL_EXTRA=""
 PRESET_HOOKS=""
+BASEUSE="-X iproute2 logrotate"
 NETSVC=net.eth0
 NETCONF='# Simple DHCP on eth0 (net.ifnames=0 is set on the kernel cmdline)
 config_eth0="dhcp"'
@@ -253,7 +254,7 @@ echo "# add valid -march= to CFLAGS" >> $MAKECONF
 echo "MAKEOPTS=\"-j$(nproc)\"" >> $MAKECONF
 echo "EMERGE_DEFAULT_OPTS=\"\${EMERGE_DEFAULT_OPTS} --getbinpkg --jobs-tmpdir-require-free-gb=1\"" >> $MAKECONF
 echo "FEATURES=\"parallel-fetch buildpkg\"" >> $MAKECONF
-echo "USE=\"\${USE} -X iproute2 logrotate ${PRESET_USE}\"" >> $MAKECONF
+echo "USE=\"\${USE} ${BASEUSE} ${PRESET_USE}\"" >> $MAKECONF
 
 grep -q autoinstall /proc/cmdline || nano $MAKECONF
 
@@ -640,7 +641,7 @@ etc-update --automode -5
 sed -i 's/^c1:12345:respawn:\/sbin\/agetty .* tty1 linux\$/& --noclear/' /etc/inittab || bash
 cd /etc/init.d
 ln -s net.lo net.eth0
-[ "${NETSVC}" != "net.eth0" ] && ln -sf net.lo ${NETSVC}
+[ -n "${NETSVC}" ] && [ "${NETSVC}" != "net.eth0" ] && ln -sf net.lo ${NETSVC}
 rc-update add watchdog boot
 rc-update add syslog-ng default
 rc-update add *cron* default
@@ -684,7 +685,7 @@ fi
 
 #todo... if vmware emerge open-vm-tools?
 
-rc-update add ${NETSVC} default
+[ -n "${NETSVC}" ] && rc-update add ${NETSVC} default
 
 # run preset chroot hooks (service configuration etc.)
 export ROOTEMAIL="${ROOTEMAIL}" NTPSERVER="${NTPSERVER}"
@@ -696,7 +697,12 @@ umount /var/tmp
 EOF
 chmod a+x chrootstart.sh
 mkdir -p preset-hooks
-for h in ${PRESET_HOOKS}; do cp "$h" preset-hooks/; done
+for h in ${PRESET_HOOKS}; do
+  cp "$h" preset-hooks/
+  # a preset can ship data for its hook in presets/<name>.d/
+  hd="${h%.chroot.sh}.d"
+  [ -d "$hd" ] && cp -r "$hd" preset-hooks/
+done
 
 time chroot . ./chrootstart.sh
 rm -rf chrootstart.sh preset-hooks

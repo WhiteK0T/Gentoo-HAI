@@ -1,0 +1,5 @@
+# required by net-libs/gnutls-3.8.10::gentoo[pkcs11]
+# required by x11-libs/vte-0.78.5::gentoo[crypt]
+# required by app-emulation/virt-manager-5.0.0-r2::gentoo[gui]
+# required by virt-manager (argument)
+>=app-crypt/p11-kit-0.25.5 abi_x86_32

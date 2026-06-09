@@ -1,0 +1,5 @@
+# required by media-sound/pulseaudio-daemon-16.1-r3::gentoo[alsa,alsa-plugin]
+# required by media-libs/libpulse-16.1-r1::gentoo
+# required by kde-plasma/plasma-pa-5.25.5::gentoo
+# required by plasma-pa (argument)
+>=media-plugins/alsa-plugins-1.2.7.1 pulseaudio

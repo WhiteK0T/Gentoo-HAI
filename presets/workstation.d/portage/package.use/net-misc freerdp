@@ -1,0 +1,5 @@
+# required by kde-plasma/krdp-6.3.5-r2::gentoo
+# required by kde-plasma/plasma-meta-6.3.5-r2::gentoo[rdp]
+# required by @selected
+# required by @world (argument)
+>=net-misc/freerdp-3.14.1 server

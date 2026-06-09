@@ -1,0 +1,4 @@
+# required by app-emulation/virt-manager-5.1.0::gentoo[python_single_target_python3_13]
+# required by @selected
+# required by @world (argument)
+>=dev-libs/libxml2-2.15.0-r1 python

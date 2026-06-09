@@ -1,0 +1,5 @@
+# required by x11-drivers/nvidia-drivers-570.124.04::gentoo[wayland,X]
+# required by x11-base/xorg-drivers-21.1-r2::gentoo[video_cards_nvidia]
+# required by @selected
+# required by @world (argument)
+>=gui-libs/egl-x11-1.0.0 abi_x86_32

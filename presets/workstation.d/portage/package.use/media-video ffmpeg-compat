@@ -1,0 +1,4 @@
+# required by media-video/simplescreenrecorder-0.4.4-r5::gentoo[mp3]
+# required by @selected
+# required by @world (argument)
+>=media-video/ffmpeg-compat-6.1.2 lame

@@ -1,0 +1,5 @@
+# required by media-libs/mesa-24.3.4-r1::gentoo[opencl,vulkan,-video_cards_nvk]
+# required by app-emulation/qemu-9.1.2::gentoo[opengl]
+# required by @selected
+# required by @world (argument)
+>=dev-lang/rust-bin-1.83.0-r2 abi_x86_32

@@ -1,0 +1,9 @@
+# required by sys-libs/gdbm-1.24::gentoo[readline]
+# required by dev-lang/python-3.13.2::gentoo[gdbm]
+# required by dev-build/ninja-1.12.1::gentoo
+# required by app-alternatives/ninja-1::gentoo[reference]
+# required by media-libs/lilv-0.24.24::gentoo
+# required by media-sound/audacity-3.4.2-r1::gentoo[lv2]
+# required by @selected
+# required by @world (argument)
+>=sys-libs/readline-8.2_p13-r1 abi_x86_32

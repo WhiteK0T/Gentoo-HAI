@@ -1,0 +1,2 @@
+# required by app-emulation/libguestfs[libvirt,python] (argument)
+>=app-emulation/libguestfs-1.54.1-r1 python libvirt
