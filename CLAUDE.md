@@ -56,11 +56,16 @@ NetworkManager, бинхост сделан опциональным + тайм�
 Ошибка efibootmgr при установке в BIOS-режиме ожидаема и безвредна
 (`--removable` + i386-pc покрывают оба варианта загрузки).
 
+HDD-логика xeon реализована (645c630): SSD под систему по rotational,
+HDD → ext4 `LABEL=data` в `/srv` (samba/backup/vm + симлинк libvirt
+images), переустановка данные не трогает; `DATADEV=none` отключает.
+Движок получил generic-крючки `PRESET_DISKSETUP`/`PRESET_FSTAB`.
+
 **Незакрытое:**
-- Разметка/назначение HDD 320 ГБ в пресете `xeon` — ждёт решения
-  пользователя (подо что второй диск).
-- Прогоны остальных пресетов (xeon, kde, workstation) и установка
-  на реальный сервер.
+- Тест data-диска в QEMU: ISO с `--preset minimal,xeon`, второй чистый
+  диск (`-drive file=data.qcow2,if=virtio` через test_w_qemu.sh) →
+  проверить /srv и переживание переустановки.
+- Прогоны kde/workstation-пресетов и установка на реальный сервер.
 
 ## Как тестировать
 
