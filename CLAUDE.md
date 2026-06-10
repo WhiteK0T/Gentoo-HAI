@@ -61,10 +61,28 @@ HDD → ext4 `LABEL=data` в `/srv` (samba/backup/vm + симлинк libvirt
 images), переустановка данные не трогает; `DATADEV=none` отключает.
 Движок получил generic-крючки `PRESET_DISKSETUP`/`PRESET_FSTAB`.
 
+Обе ветки data-диска подтверждены в QEMU (2026-06-10): чистый vdb
+отформатирован, при повторной установке — «keeping existing data
+filesystem». Установка теперь логируется в /var/log/hai-install.log,
+файлы krn330.conf/39_efitools едут на CD (без зависимости от github).
+
+Уроки отладки QEMU-тестов (2026-06-10):
+- Давать VM ≥6 ГБ (`-m 6`): с 2 ГБ гость уходит в своп (xeon tmpfs 4G).
+- slirp-сеть: фейковый IPv6 «чернодырит» соединения → в test_w_qemu.sh
+  ipv6=off; фетч индекса бинхоста у portage без таймаута → в QEMU
+  GETBINPKG=no по умолчанию (детект по dmi sys_vendor). Симптом был:
+  вис с ~0% CPU сразу после Global Updates (после `4Q-2025...`).
+- НЕ советовать Ctrl+C в консоли установки: SIGINT убивает весь
+  установщик (|| bash ловит ошибки, не сигналы). Вмешательство — только
+  через рескью-шеллы. Случайный Ctrl+S (XOFF) морозит вывод — Ctrl+Q.
+- `--- insufficient free space, parallelism reduced` в emerge — норма
+  (встроенная оценка portage), едет последовательно.
+
 **Незакрытое:**
-- Тест data-диска в QEMU: ISO с `--preset minimal,xeon`, второй чистый
-  диск (`-drive file=data.qcow2,if=virtio` через test_w_qemu.sh) →
-  проверить /srv и переживание переустановки.
+- Дождаться конца xeon-прогона: проверить /srv (samba/backup/vm),
+  симлинк /var/lib/libvirt/images, fstab.
+- На новых minimal CD нет sntp и file — варнинги в логе; заменить
+  sntp на chrony-вызов для реального железа.
 - Прогоны kde/workstation-пресетов и установка на реальный сервер.
 
 ## Как тестировать
