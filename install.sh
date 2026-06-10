@@ -314,7 +314,9 @@ echo "# add valid -march= to CFLAGS" >> $MAKECONF
 echo "MAKEOPTS=\"-j$(nproc)\"" >> $MAKECONF
 BINPKGOPT=""
 [ "$GETBINPKG" = yes ] && BINPKGOPT="--getbinpkg"
-echo "EMERGE_DEFAULT_OPTS=\"\${EMERGE_DEFAULT_OPTS} ${BINPKGOPT} --jobs-tmpdir-require-free-gb=1\"" >> $MAKECONF
+# note: no --jobs-tmpdir-require-free-gb here - with a tmpfs smaller than the
+# required threshold emerge waits forever for space instead of reducing jobs
+echo "EMERGE_DEFAULT_OPTS=\"\${EMERGE_DEFAULT_OPTS} ${BINPKGOPT}\"" >> $MAKECONF
 echo "FEATURES=\"parallel-fetch buildpkg\"" >> $MAKECONF
 echo "USE=\"\${USE} ${BASEUSE} ${PRESET_USE}\"" >> $MAKECONF
 
@@ -788,8 +790,6 @@ done
 
 time chroot . ./chrootstart.sh
 rm -rf chrootstart.sh preset-hooks krn330.conf
-# Delete temporary change to avoid insufficient free space, emerge job parallelism reduced
-sed -i 's/--jobs-tmpdir-require-free-gb=[0-9]\+ \?//g' $MAKECONF
 
 umount var/tmp
 rm -rf var/tmp/*
