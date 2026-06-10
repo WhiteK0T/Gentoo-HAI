@@ -112,6 +112,10 @@ hostname "$INSTALL_HOSTNAME"
 SET_PASS=${SET_PASS:-password}
 # user account auto-created by the desktop presets (workstation/kde)
 INSTALLUSER=${INSTALLUSER:-sam}
+# Use the Gentoo binary package host (much faster, esp. on slow CPUs). Disable
+# with GETBINPKG=no or the 'nobinpkg' kernel cmdline flag if the binhost stalls.
+GETBINPKG=${GETBINPKG:-yes}
+grep -qw nobinpkg /proc/cmdline && GETBINPKG=no
 
 set -x -u
 GHBASEURL="https://raw.githubusercontent.com/ASoft-se/Gentoo-HAI/refs/heads/master"
@@ -287,8 +291,14 @@ echo $MAKECONF
 echo >> $MAKECONF
 echo "# add valid -march= to CFLAGS" >> $MAKECONF
 echo "MAKEOPTS=\"-j$(nproc)\"" >> $MAKECONF
-echo "EMERGE_DEFAULT_OPTS=\"\${EMERGE_DEFAULT_OPTS} --getbinpkg --jobs-tmpdir-require-free-gb=1\"" >> $MAKECONF
+BINPKGOPT=""
+[ "$GETBINPKG" = yes ] && BINPKGOPT="--getbinpkg"
+echo "EMERGE_DEFAULT_OPTS=\"\${EMERGE_DEFAULT_OPTS} ${BINPKGOPT} --jobs-tmpdir-require-free-gb=1\"" >> $MAKECONF
 echo "FEATURES=\"parallel-fetch buildpkg\"" >> $MAKECONF
+# abort fetches that stall below 2KB/s for 60s so --keep-going can fall back to
+# another mirror / building from source instead of hanging forever
+echo 'FETCHCOMMAND="curl -f -L --connect-timeout 30 --speed-limit 2048 --speed-time 60 --retry 2 -o \"${DISTDIR}/${FILE}\" \"${URI}\""' >> $MAKECONF
+echo 'RESUMECOMMAND="curl -f -L -C - --connect-timeout 30 --speed-limit 2048 --speed-time 60 --retry 2 -o \"${DISTDIR}/${FILE}\" \"${URI}\""' >> $MAKECONF
 echo "USE=\"\${USE} ${BASEUSE} ${PRESET_USE}\"" >> $MAKECONF
 
 grep -q autoinstall /proc/cmdline || nano $MAKECONF

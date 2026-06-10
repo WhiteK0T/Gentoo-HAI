@@ -54,6 +54,10 @@ while (($#)); do
   setupdonehalt)
     SETUPDONEHALT=YES
   ;;
+  nobinpkg)
+    # tell install.sh to skip the binary package host (build from source)
+    NOBINPKG=YES
+  ;;
   *)
     # unknown arguments are passed thru
     POSITIONAL+=("$1") # save it in an array for later
@@ -154,6 +158,8 @@ fi
 
 # pass preset selection to install.sh via kernel cmdline
 [ -n "$PRESETARG" ] && sed -i "s/ autoinstall/ autoinstall preset=${PRESETARG}/" $bootmenufiles
+# skip the binary package host if requested
+[[ "${NOBINPKG:-}" == "YES" ]] && sed -i 's/ autoinstall/ autoinstall nobinpkg/' $bootmenufiles
 
 # rebuild efimg https://gitweb.gentoo.org/proj/catalyst.git/tree/targets/support/create-iso.sh#n256
 clst_target_path=.
