@@ -33,7 +33,7 @@ sh gentoocd_unpack.sh --preset gateway,xeon          # ISO для реально
 |---|---|
 | `minimal` | База движка: sshd (`PermitRootLogin no`), cron, syslog-ng, logrotate, smartmontools, iotop/iftop/tcpdump, mc, watchdog, nftables/iptables, git. Сеть — DHCP на eth0. Ничего не добавляет — служит шаблоном. |
 | `gateway` | Стек автора оригинала: bind (chroot) + dhcpd (chroot, в runlevel не добавлен — сначала настроить subnets) + postfix (только локальная почта, алиас root → `ROOTEMAIL`) + tftp-hpa (PXE) + net-snmp + nmap. Сеть — мост br0 поверх eth0. |
-| `xeon` | Железо-надстройка для сервера на Xeon E5450 (8 ГБ RAM): tmpfs сборки урезан до 4G, тяжёлые пакеты (qtwebengine, firefox, gcc, rust…) собираются на диске через `package.env`, nouveau и coretemp в ядре, `VIDEO_CARDS="nouveau"`. Комбинировать: `minimal,xeon`. HDD (второй диск) установщик не трогает — разметить вручную после первой загрузки. |
+| `xeon` | Железо-надстройка для сервера на Xeon E5450 (8 ГБ RAM): tmpfs сборки урезан до 4G, тяжёлые пакеты (qtwebengine, firefox, gcc, rust…) собираются на диске через `package.env`, nouveau и coretemp в ядре, `VIDEO_CARDS="nouveau"`. Система ставится строго на SSD (невращающийся диск), как бы BIOS ни пронумеровал диски. HDD становится data-диском (см. ниже). Комбинировать: `minimal,xeon`. |
 | `workstation` | Реплика основной системы: профиль desktop/plasma, Plasma 6 + NVIDIA/CUDA, NetworkManager, docker/libvirt/samba, Java/Haskell, медиастек. World-файл и конфиг portage основной системы лежат в `presets/workstation.d/` и копируются в систему хуком. `-march=native` вместо skylake, российские зеркала, `ACCEPT_LICENSE="*"`. ccache/distcc сознательно не переносятся (настройка под хост). |
 | `kde` | Лёгкая GUI-надстройка: профиль desktop/plasma, plasma-meta + kdecore-meta + sddm + NetworkManager. Для QEMU сама ставит `VIDEO_CARDS="virtio"`. Комбинировать последним: `minimal,kde`, `minimal,xeon,kde`. |
 
@@ -46,6 +46,27 @@ sh gentoocd_unpack.sh --preset gateway,xeon          # ISO для реально
   wheel получает sudo. Начальный пароль = `SET_PASS` (как у root) — сменить после
   первого входа.
 - Раскладка X/Wayland настраивается в Plasma; движок задаёт только консольную (`ru`).
+
+## Data-диск пресета `xeon` (HDD → /srv)
+
+Второй диск (HDD 320 ГБ) пресет оформляет как data-диск: GPT, один
+ext4-раздел с меткой `data`, в fstab монтируется в `/srv`. Внутри создаются
+`/srv/samba` (шары), `/srv/backup` (бэкапы), `/srv/vm` (образы VM) и симлинк
+`/var/lib/libvirt/images → /srv/vm`, так что libvirt по умолчанию кладёт
+образы на HDD.
+
+Правила безопасности:
+
+- **форматируется только чистый диск** (без таблицы разделов и ФС);
+- раздел с существующей меткой `data` переиспользуется как есть —
+  **данные переживают переустановку системы**;
+- диск с любой другой ФС не трогается (предупреждение в лог); чтобы отдать
+  его установщику — `e2label <раздел> data` либо стереть `wipefs -a`.
+
+Управление: `DATADEV=/dev/sdX` — указать диск явно, `DATADEV=none` (или
+`datadev=none` в kernel cmdline) — не трогать второй диск вообще.
+Авто-выбор: первый несъёмный диск, не являющийся системным. Сама система
+при этом ставится на SSD — пресет выбирает невращающийся диск под `IDEV`.
 
 ## Интерфейс пресета
 
@@ -63,6 +84,9 @@ sh gentoocd_unpack.sh --preset gateway,xeon          # ISO для реально
 | `TMPFSSIZE` | размер tmpfs `/var/tmp` (сборочное место), по умолчанию 6G |
 | `NETCONF` | полное содержимое `/etc/conf.d/net` |
 | `NETSVC` | служба `net.*`, добавляемая в default runlevel (по умолчанию `net.eth0`; пустая строка — netifrc не включать, например при NetworkManager) |
+| `PRESET_FSTAB` | дополнительные строки fstab устанавливаемой системы |
+| `PRESET_DISKSETUP` | имена функций, которые движок вызовет после разметки и монтирования системного диска (доп. диски: можно монтировать под `/mnt/gentoo` и дописывать `PRESET_FSTAB`) |
+| `IDEV` | целевой диск; пресет может задать его до автодетекта движка (`IDEV=${IDEV:-/dev/sdX}`) |
 
 Опционально `presets/<имя>.chroot.sh` — хук, выполняемый **внутри chroot**
 после основного emerge (настройка служб, rc-update и т.п.). Хуку доступны

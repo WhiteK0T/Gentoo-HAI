@@ -36,6 +36,10 @@ PRESET_USE=""
 PRESET_PACKAGE_USE=""
 PRESET_KERNEL_EXTRA=""
 PRESET_HOOKS=""
+# extra fstab lines and disk-setup functions (run after the system disk is
+# partitioned and mounted; may mount under /mnt/gentoo and extend PRESET_FSTAB)
+PRESET_FSTAB=""
+PRESET_DISKSETUP=""
 BASEUSE="-X iproute2 logrotate"
 NETSVC=net.eth0
 NETCONF='# Simple DHCP on eth0 (net.ifnames=0 is set on the kernel cmdline)
@@ -224,6 +228,9 @@ mount ${IDEVP}1 /mnt/gentoo/boot || exit 1
 mkdir -p /mnt/gentoo/boot/efi || exit 1
 mount ${IDEVP}2 /mnt/gentoo/boot/efi || exit 1
 
+# preset-provided extra disks (data disk etc.)
+for f in ${PRESET_DISKSETUP}; do $f || bash; done
+
 # wait to make sure sntp is done
 wait $pid_ntp
 [ -f portagehelper.sh ] && cp portagehelper.sh /mnt/gentoo
@@ -271,6 +278,7 @@ ${IDEVP}1		/boot		ext2		noauto,noatime	1 2
 ${IDEVP}2		/boot/efi		vfat		noauto,noatime	1 2
 ${IDEVP}4		/		ext4		discard,noatime	0 1
 LABEL=swap0		none		swap		sw		0 0
+${PRESET_FSTAB}
 
 none			/var/tmp	tmpfs		size=${TMPFSSIZE},nr_inodes=1M 0 0
 " >> etc/fstab
