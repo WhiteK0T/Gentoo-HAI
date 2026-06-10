@@ -130,6 +130,12 @@ SET_PASS=${SET_PASS:-password}
 INSTALLUSER=${INSTALLUSER:-sam}
 # Use the Gentoo binary package host (much faster, esp. on slow CPUs). Disable
 # with GETBINPKG=no or the 'nobinpkg' kernel cmdline flag if the binhost stalls.
+# Off by default in QEMU: portage's index fetch has no timeout and reproducibly
+# hangs on stale connections through the slirp user-mode network, while binpkgs
+# buy almost nothing in test VMs (USE mismatch builds from source anyway).
+if [ -z "${GETBINPKG:-}" ] && grep -q QEMU /sys/devices/virtual/dmi/id/sys_vendor 2>/dev/null; then
+  GETBINPKG=no
+fi
 GETBINPKG=${GETBINPKG:-yes}
 grep -qw nobinpkg /proc/cmdline && GETBINPKG=no
 
