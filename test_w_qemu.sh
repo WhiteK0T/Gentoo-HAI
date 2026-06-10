@@ -1,6 +1,8 @@
 #!/bin/bash
 echo $0 Got arguments: $*
-netscript="-nic user,model=virtio"
+# ipv6=off: slirp's fake IPv6 blackholes connections (portage's fetcher hangs
+# on it forever while curl falls back to IPv4 instantly)
+netscript="-nic user,model=virtio,ipv6=off"
 
 DISK=kvm_lxgentootest.qcow2
 disktype="
