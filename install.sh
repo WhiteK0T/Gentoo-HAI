@@ -12,6 +12,18 @@
 # Keyboard layout, timezone and ntp server see settings below
 #
 
+# Log the whole run: re-exec ourselves with all output through tee. The log
+# lives on the livecd in /tmp and is copied to /var/log/hai-install.log of the
+# installed system at the end (see the cleanup section). Automatic only in
+# autoinstall mode, because the pipe would break the interactive nano step of
+# manual installs; opt in manually with HAI_LOGGING=yes.
+if [ -z "${HAI_LOG:-}" ] && { grep -q autoinstall /proc/cmdline 2>/dev/null || [ "${HAI_LOGGING:-}" = "yes" ]; }; then
+  export HAI_LOG=/tmp/hai-install.log
+  echo "Logging this install to $HAI_LOG"
+  sh "$0" "$@" 2>&1 | tee "$HAI_LOG"
+  exit
+fi
+
 # Make sure our root mountpoint exists
 mkdir -p /mnt/gentoo
 
@@ -773,6 +785,9 @@ sed -i 's/--jobs-tmpdir-require-free-gb=[0-9]\+ \?//g' $MAKECONF
 umount var/tmp
 rm -rf var/tmp/*
 rm -rf var/cache/distfiles
+# keep the install log on the installed system (tee is still appending, the
+# last few shutdown lines won't make it - that's fine)
+[ -f "${HAI_LOG:-}" ] && cp "$HAI_LOG" var/log/hai-install.log
 umount *
 cd /
 ## umount somehow fails recently, but can not find usage, lets go lazy
