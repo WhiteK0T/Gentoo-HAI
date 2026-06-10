@@ -141,14 +141,16 @@ sed -i "s/ dokeymap/ net.ifnames=0 keymap=${KEYMAP}  autoinstall/" $bootmenufile
 [ -d ../presets ] && cp -ra ../presets .
 # bake the ssh public key if one lies next to the scripts
 [ -f ../authorized_keys ] && cp ../authorized_keys .
+# always ship our install.sh and portagehelper.sh on the cd; without them the
+# livecd addon falls back to downloading upstream install.sh (no presets!)
+cp ../install.sh g-install.sh
+cp ../portagehelper.sh .
 
 if [ "$AUTO" == "YES" ]; then
   echo running with auto - wont stop
   sed -i 's/ autoinstall/ autoinstall console=tty0 console=ttyS0,115200/' $bootmenufiles
   # use console for -nographics, sga and curses
   sed -i 's/vga=791//' $bootmenufiles
-  cp ../install.sh g-install.sh
-  cp ../portagehelper.sh .
 else
 # TODO color ths to make it readable
 echo -e "\n\tStarting separate shell, just exit if no changes should be done.\n\n\tWhen exit, the iso will be rebuilt."
