@@ -22,7 +22,7 @@ POSITIONAL=()
 # bashrc hook must be patched into the squashfs; nosquash restores the old
 # genkernel-era behavior for old isos
 DOSQUASH=1
-KEYMAP=us
+KEYMAP=${KEYMAP:-ru}
 PRESETARG=""
 # root password for the livecd and the installed system (baked into the squashfs)
 SET_PASS=${SET_PASS:-}
@@ -144,7 +144,6 @@ sed -i "s/ dokeymap/ net.ifnames=0 keymap=${KEYMAP}  autoinstall/" $bootmenufile
 
 if [ "$AUTO" == "YES" ]; then
   echo running with auto - wont stop
-  [[ "$SETUPDONEHALT" == "YES" ]] && sed -i 's/ autoinstall/ autoinstall setupdonehalt/' $bootmenufiles
   sed -i 's/ autoinstall/ autoinstall console=tty0 console=ttyS0,115200/' $bootmenufiles
   # use console for -nographics, sga and curses
   sed -i 's/vga=791//' $bootmenufiles
@@ -158,6 +157,8 @@ fi
 
 # pass preset selection to install.sh via kernel cmdline
 [ -n "$PRESETARG" ] && sed -i "s/ autoinstall/ autoinstall preset=${PRESETARG}/" $bootmenufiles
+# halt instead of reboot when the install finishes (works without 'auto' too)
+[[ "${SETUPDONEHALT:-}" == "YES" ]] && sed -i 's/ autoinstall/ autoinstall setupdonehalt/' $bootmenufiles
 # skip the binary package host if requested
 [[ "${NOBINPKG:-}" == "YES" ]] && sed -i 's/ autoinstall/ autoinstall nobinpkg/' $bootmenufiles
 
