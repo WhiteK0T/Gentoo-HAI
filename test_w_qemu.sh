@@ -12,7 +12,7 @@ disktypeahci="
 "
 
 USEEFI=""
-VNC="-vnc 127.0.0.1:22 -k sv"
+VNC="-vnc 127.0.0.1:22"
 VGA=""
 memorygb=2
 POSITIONAL=()
