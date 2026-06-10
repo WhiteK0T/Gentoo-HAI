@@ -145,6 +145,9 @@ sed -i "s/ dokeymap/ net.ifnames=0 keymap=${KEYMAP}  autoinstall/" $bootmenufile
 # livecd addon falls back to downloading upstream install.sh (no presets!)
 cp ../install.sh g-install.sh
 cp ../portagehelper.sh .
+# kernel base config and grub helper, so installs don't depend on github
+cp ../krn330.conf .
+mkdir -p grub.d && cp ../grub.d/39_efitools grub.d/
 
 if [ "$AUTO" == "YES" ]; then
   echo running with auto - wont stop

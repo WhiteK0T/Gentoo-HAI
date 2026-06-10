@@ -134,7 +134,8 @@ GETBINPKG=${GETBINPKG:-yes}
 grep -qw nobinpkg /proc/cmdline && GETBINPKG=no
 
 set -x -u
-GHBASEURL="https://raw.githubusercontent.com/ASoft-se/Gentoo-HAI/refs/heads/master"
+# network fallback for files not found locally/on the cd; points to our fork
+GHBASEURL="https://raw.githubusercontent.com/WhiteK0T/Gentoo-HAI/refs/heads/presets"
 # Try to update to a correct system time
 touch /var/db/ntp-kod
 sntp -S $NTPSERVER &
@@ -391,8 +392,8 @@ lspci
 
 eselect kernel set 1
 cd /usr/src/linux
-#getting a base kernel config
-wget ${GHBASEURL}/krn330.conf -O .config
+#getting a base kernel config (local copy shipped on the cd, github as fallback)
+[ -f /krn330.conf ] && cp /krn330.conf .config || wget ${GHBASEURL}/krn330.conf -O .config
 echo "
 # Gentoo Linux
 CONFIG_GENTOO_LINUX=y
@@ -777,8 +778,16 @@ for h in ${PRESET_HOOKS}; do
   [ -d "$hd" ] && cp -r "$hd" preset-hooks/
 done
 
+# ship local copies of files chrootstart would otherwise fetch from GHBASEURL
+for d in "$SCRIPTDIR" /mnt/cdrom /run/initramfs/live; do
+  [ -f "$d/krn330.conf" ] && cp "$d/krn330.conf" krn330.conf && break
+done
+for d in "$SCRIPTDIR" /mnt/cdrom /run/initramfs/live; do
+  [ -f "$d/grub.d/39_efitools" ] && mkdir -p etc/grub.d && cp "$d/grub.d/39_efitools" etc/grub.d/39_efitools && break
+done
+
 time chroot . ./chrootstart.sh
-rm -rf chrootstart.sh preset-hooks
+rm -rf chrootstart.sh preset-hooks krn330.conf
 # Delete temporary change to avoid insufficient free space, emerge job parallelism reduced
 sed -i 's/--jobs-tmpdir-require-free-gb=[0-9]\+ \?//g' $MAKECONF
 
