@@ -2,7 +2,9 @@
 echo $0 Got arguments: $*
 # ipv6=off: slirp's fake IPv6 blackholes connections (portage's fetcher hangs
 # on it forever while curl falls back to IPv4 instantly)
-netscript="-nic user,model=virtio,ipv6=off"
+# hostfwd: reach the guest sshd from the host as localhost:2222 (ssh -p 2222
+# root@localhost / scp -P 2222 ...), so logs can be copied out without VNC.
+netscript="-nic user,model=virtio,ipv6=off,hostfwd=tcp::2222-:22"
 
 DISK=kvm_lxgentootest.qcow2
 disktype="
