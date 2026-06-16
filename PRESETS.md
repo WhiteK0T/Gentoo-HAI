@@ -33,18 +33,21 @@ sh gentoocd_unpack.sh --preset gateway,xeon          # ISO для реально
 |---|---|
 | `minimal` | База движка: sshd (`PermitRootLogin no`), cron, syslog-ng, logrotate, smartmontools, iotop/iftop/tcpdump, mc, watchdog, nftables/iptables, git. Сеть — DHCP на eth0. Ничего не добавляет — служит шаблоном. |
 | `gateway` | Стек автора оригинала: bind (chroot) + dhcpd (chroot, в runlevel не добавлен — сначала настроить subnets) + postfix (только локальная почта, алиас root → `ROOTEMAIL`) + tftp-hpa (PXE) + net-snmp + nmap. Сеть — мост br0 поверх eth0. |
-| `xeon` | Железо-надстройка для сервера на Xeon E5450 (8 ГБ RAM): tmpfs сборки урезан до 4G, тяжёлые пакеты (qtwebengine, firefox, gcc, rust…) собираются на диске через `package.env`, nouveau и coretemp в ядре, `VIDEO_CARDS="nouveau"`. Система ставится строго на SSD (невращающийся диск), как бы BIOS ни пронумеровал диски. HDD становится data-диском (см. ниже). Комбинировать: `minimal,xeon`. |
+| `xeon` | Железо-надстройка для сервера на Xeon E5450 (8 ГБ RAM): tmpfs сборки урезан до 4G, тяжёлые пакеты (qtwebengine, firefox, gcc, rust…) собираются на диске через `package.env`, nouveau и coretemp в ядре, `VIDEO_CARDS="nouveau"`. Система ставится строго на SSD (невращающийся диск), как бы BIOS ни пронумеровал диски. HDD становится data-диском (см. ниже). Создаёт пользователя `sam` (wheel+sudo, ставит `app-admin/sudo`). Комбинировать: `minimal,xeon`. |
 | `workstation` | Реплика основной системы: профиль desktop/plasma, Plasma 6 + NVIDIA/CUDA, NetworkManager, docker/libvirt/samba, Java/Haskell, медиастек. World-файл и конфиг portage основной системы лежат в `presets/workstation.d/` и копируются в систему хуком. `-march=native` вместо skylake, российские зеркала, `ACCEPT_LICENSE="*"`. ccache/distcc сознательно не переносятся (настройка под хост). |
 | `kde` | Лёгкая GUI-надстройка: профиль desktop/plasma, plasma-meta + kdecore-meta + sddm + NetworkManager. Для QEMU сама ставит `VIDEO_CARDS="virtio"`. Комбинировать последним: `minimal,kde`, `minimal,xeon,kde`. |
+
+Пользователь `sam` создаётся пресетами `xeon`, `kde`, `workstation` (общий
+сниппет `presets/adduser.inc`). Переопределить имя: `INSTALLUSER=имя`,
+отключить: `INSTALLUSER=""`. Группы: wheel/users в xeon, +audio/video/… в
+десктопах (+docker/libvirt в workstation), wheel получает sudo. Начальный
+пароль = `SET_PASS` (как у root) — сменить после первого входа. Если при
+сборке ISO запечён ssh-ключ, `sam` наследует его из `/etc/skel`.
 
 Замечания к `workstation`/`kde`:
 
 - gcc/glibc исключены из пересборки ради времени — после установки при желании
   выполнить полный `emerge -uvDN world`.
-- Создаётся пользователь `sam` (переопределить: `INSTALLUSER=имя`, отключить:
-  `INSTALLUSER=""`) с группами wheel/audio/video/… (+docker/libvirt в workstation),
-  wheel получает sudo. Начальный пароль = `SET_PASS` (как у root) — сменить после
-  первого входа.
 - Раскладка X/Wayland настраивается в Plasma; движок задаёт только консольную (`ru`).
 
 ## Data-диск пресета `xeon` (HDD → /srv)
@@ -90,10 +93,15 @@ ext4-раздел с меткой `data`, в fstab монтируется в `/s
 
 Опционально `presets/<имя>.chroot.sh` — хук, выполняемый **внутри chroot**
 после основного emerge (настройка служб, rc-update и т.п.). Хуку доступны
-`ROOTEMAIL` и `NTPSERVER` из окружения. Данные для хука можно положить в
-`presets/<имя>.d/` — каталог копируется в chroot рядом с хуком
-(`/preset-hooks/<имя>.d/`). При ошибке хука установщик, как и
+`ROOTEMAIL`, `NTPSERVER`, `SET_PASS`, `INSTALLUSER` из окружения. Данные для
+хука можно положить в `presets/<имя>.d/` — каталог копируется в chroot рядом
+с хуком (`/preset-hooks/<имя>.d/`). При ошибке хука установщик, как и
 везде, падает в интерактивный shell (`|| bash`) — починить и `exit`.
+
+Общий код для хуков — в файлах `presets/*.inc` (расширение `.inc`, не `.sh`,
+чтобы движок не запускал их как самостоятельные хуки). Движок копирует их в
+`/preset-hooks/`, хук подключает через `. "$(dirname "$0")/файл.inc"`. Так
+сделано создание пользователя: `presets/adduser.inc` (параметр `USER_GROUPS`).
 
 ## Прочие отличия форка от оригинала
 

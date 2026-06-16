@@ -45,17 +45,7 @@ for s in NetworkManager chronyd dbus display-manager docker libvirtd samba syskl
   rc-update add "$s" default
 done
 
-# create the user account (initial password = SET_PASS, same as root — change it!)
-if [ -n "${INSTALLUSER:-}" ] && ! id "$INSTALLUSER" > /dev/null 2>&1; then
-  useradd -m "$INSTALLUSER"
-  # add only the groups that exist on this system
-  for g in wheel users audio video usb plugdev render input docker libvirt; do
-    getent group "$g" > /dev/null && usermod -aG "$g" "$INSTALLUSER"
-  done
-  echo "${INSTALLUSER}:${SET_PASS:-password}" | chpasswd -c BCRYPT
-fi
-# let wheel use sudo
-[ -f /etc/sudoers ] && sed -i -e 's/^# *%wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' \
-  -e 's/^# *%wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
+# login user (sam): desktop + docker/libvirt group set, wheel + sudo
+USER_GROUPS="wheel users audio video usb plugdev render input docker libvirt" . "$(dirname "$0")/adduser.inc"
 
 exit 0

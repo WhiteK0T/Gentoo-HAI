@@ -56,7 +56,7 @@ PRESET_DISKSETUP="${PRESET_DISKSETUP} xeon_data_disk"
 # to an on-disk tmpdir instead (see xeon.chroot.sh)
 TMPFSSIZE=4G
 
-PRESET_PACKAGES="${PRESET_PACKAGES} sys-apps/lm-sensors"
+PRESET_PACKAGES="${PRESET_PACKAGES} sys-apps/lm-sensors app-admin/sudo"
 
 PRESET_KERNEL_EXTRA="${PRESET_KERNEL_EXTRA}
 # nouveau for the old GeForce GT (console now, X/KDE later)

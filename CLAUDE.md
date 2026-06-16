@@ -37,8 +37,11 @@ ru.pool.ntp.org, ROOTEMAIL=uyiraqoyir041@gmail.com.
   пользователя (make.conf, package.use и пр.).
 - Выбор: `PRESET=minimal,xeon sh install.sh`, либо `preset=` в kernel
   cmdline, либо `sh gentoocd_unpack.sh --preset ...` при сборке ISO.
-- Учётка: десктопные пресеты создают пользователя `sam`
-  (`INSTALLUSER`, пароль = `SET_PASS`, wheel+sudo).
+- Учётка: пресеты `xeon`/`kde`/`workstation` создают пользователя `sam`
+  (`INSTALLUSER`, пароль = `SET_PASS`, wheel+sudo) через общий сниппет
+  `presets/adduser.inc`. `minimal` — без юзера. Без запечённого ssh-ключа
+  root по ssh запрещён (`PermitRootLogin no`) — на сервер заходить либо
+  юзером `sam`, либо запечь ключ (key-only root).
 - SSH: ключ через `SSHKEY=` (строка или путь) или файл `authorized_keys`
   рядом со скриптом → key-only sshd; без ключа — парольный режим.
 

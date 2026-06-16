@@ -785,6 +785,10 @@ for h in ${PRESET_HOOKS}; do
   hd="${h%.chroot.sh}.d"
   [ -d "$hd" ] && cp -r "$hd" preset-hooks/
 done
+# shared snippets sourced by hooks (named *.inc so the hook runner skips them)
+[ -n "$PRESETDIR" ] && for inc in "$PRESETDIR"/*.inc; do
+  [ -f "$inc" ] && cp "$inc" preset-hooks/
+done
 
 # ship local copies of files chrootstart would otherwise fetch from GHBASEURL
 for d in "$SCRIPTDIR" /mnt/cdrom /run/initramfs/live; do

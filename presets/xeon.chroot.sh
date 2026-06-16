@@ -26,4 +26,8 @@ if mountpoint -q /srv; then
   [ -e /var/lib/libvirt/images ] || ln -s /srv/vm /var/lib/libvirt/images
 fi
 
+# admin login user (sam by default): wheel + sudo, server group set.
+# A baked ssh key (if any) is already in /etc/skel, so the user inherits it.
+USER_GROUPS="wheel users" . "$(dirname "$0")/adduser.inc"
+
 exit 0
