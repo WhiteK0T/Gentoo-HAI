@@ -81,12 +81,16 @@ filesystem». Установка теперь логируется в /var/log/h
 - `--- insufficient free space, parallelism reduced` в emerge — норма
   (встроенная оценка portage), едет последовательно.
 
+Юзер `sam` в xeon + ssh подтверждены на прогоне (2026-06-16): установка
+прошла, sam создан (wheel+sudo), ssh работает. xeon-пресет готов.
+
 **Незакрытое:**
-- Дождаться конца xeon-прогона: проверить /srv (samba/backup/vm),
-  симлинк /var/lib/libvirt/images, fstab.
 - На новых minimal CD нет sntp и file — варнинги в логе; заменить
   sntp на chrony-вызов для реального железа.
-- Прогоны kde/workstation-пресетов и установка на реальный сервер.
+- Прогоны kde/workstation-пресетов в QEMU.
+- Установка на реальный Xeon-сервер (боевой ISO, без setupdonehalt/auto).
+- Косметика: /var/log/hai-install.log сохраняется обрезанным (только
+  хвост после chroot); диагностировать по install-run.log при случае.
 
 ## Как тестировать
 
