@@ -16,7 +16,7 @@
 ## Для кого и под что
 
 Пользователь — опытный гентушник (Gentoo — основная ОС), русскоязычный.
-Три целевых сценария:
+Целевые сценарии:
 
 1. **Домашний сервер**: Xeon E5450, 8 ГБ RAM, SSD 250 ГБ + HDD 320 ГБ,
    старая NVIDIA GT (только nouveau), монитор подключается через
@@ -25,6 +25,9 @@
 3. **Рабочая станция** как главная машина пользователя (Plasma 6,
    nvidia/CUDA, skylake, NetworkManager, docker/libvirt/samba, sysklogd,
    chrony, ACCEPT_LICENSE="*", русские зеркала) → `workstation`.
+4. **KVM-VPS** у провайдера (панель VirtFusion, AMD Ryzen, 16 ГБ, 200 ГБ
+   NVMe, вложенная виртуализация) → пресет `vps` (+`minimal`). Serial-консоль,
+   virtio, KVM-хост, статик/DHCP-сеть, юзер `sam`.
 
 Русские дефолты запечены в движок: Europe/Moscow, раскладка ru,
 ru.pool.ntp.org, ROOTEMAIL=uyiraqoyir041@gmail.com.
@@ -84,7 +87,17 @@ filesystem». Установка теперь логируется в /var/log/h
 Юзер `sam` в xeon + ssh подтверждены на прогоне (2026-06-16): установка
 прошла, sam создан (wheel+sudo), ssh работает. xeon-пресет готов.
 
+2026-07-05: добавлен пресет `vps` (KVM-VPS/VirtFusion). Ядро: KVM-хост
+(KVM_AMD/INTEL, vhost/tun/bridge) для вложенной виртуализации + явный
+virtio-guest транспорт (VIRTIO_PCI и пр.). Serial-консоль форсится в
+vps.chroot.sh (grub+inittab) — работает и на non-auto ISO. Юзер `sam`.
+Сеть: DHCP по умолчанию, статика через VPS_IP/VPS_GW/VPS_DNS — эти
+переменные gentoocd_unpack.sh запекает в CD (как SET_PASS) и прокидывает
+через su, чтобы пережить автоустановку. Диск — автодетект. **В QEMU не
+прогнан**, только синтаксис/смоук.
+
 **Незакрытое:**
+- Прогон `vps`-пресета (в QEMU или сразу на боевом VPS).
 - На новых minimal CD нет sntp и file — варнинги в логе; заменить
   sntp на chrony-вызов для реального железа.
 - Прогоны kde/workstation-пресетов в QEMU.

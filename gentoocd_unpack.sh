@@ -72,7 +72,7 @@ POSITIONAL=${POSITIONAL[@]}
 # check for root since we are using tmpfs and need root to not risk getting incorrect permissions on the new squashfs
 if [[ $EUID -ne 0 ]]; then
   echo "This script must be run as root (to mount tmpfs), please provide password to su" 1>&2
-  su -c "SET_PASS='${SET_PASS}' /bin/sh $0 ${ALLPOSITIONAL}" && [ "$AUTO" == "YES" ] && (rm -f kvm_lxgentootest.qcow2; sh test_w_qemu.sh -cdrom install-amd64-mod.iso ${POSITIONAL})
+  su -c "SET_PASS='${SET_PASS}' VPS_IP='${VPS_IP:-}' VPS_GW='${VPS_GW:-}' VPS_DNS='${VPS_DNS:-}' /bin/sh $0 ${ALLPOSITIONAL}" && [ "$AUTO" == "YES" ] && (rm -f kvm_lxgentootest.qcow2; sh test_w_qemu.sh -cdrom install-amd64-mod.iso ${POSITIONAL})
   exit
 fi
 # files that contains kernelcmdlines that should be patched
@@ -115,6 +115,12 @@ echo > squashfs-root/lib/udev/rules.d/80-net-setup-link.rules
 
 # bake the chosen root password in so the addon and g-install.sh pick it up
 [ -n "${SET_PASS}" ] && echo "export SET_PASS='${SET_PASS}'" >> squashfs-root/root/.bashrc
+# bake vps static-network vars so they survive into an unattended install
+# (the vps preset turns VPS_IP/VPS_GW/VPS_DNS into a static /etc/conf.d/net)
+for v in VPS_IP VPS_GW VPS_DNS; do
+  eval "_val=\${$v:-}"
+  [ -n "$_val" ] && echo "export $v='$_val'" >> squashfs-root/root/.bashrc
+done
 cat ../cdhelpers/gentoo_cd_bashrc_addon >> squashfs-root/root/.bashrc
 mksquashfs squashfs-root image.squashfs || exit 1
 rm -rf squashfs-root

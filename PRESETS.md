@@ -34,6 +34,7 @@ sh gentoocd_unpack.sh --preset gateway,xeon          # ISO для реально
 | `minimal` | База движка: sshd (`PermitRootLogin no`), cron, syslog-ng, logrotate, smartmontools, iotop/iftop/tcpdump, mc, watchdog, nftables/iptables, git. Сеть — DHCP на eth0. Ничего не добавляет — служит шаблоном. |
 | `gateway` | Стек автора оригинала: bind (chroot) + dhcpd (chroot, в runlevel не добавлен — сначала настроить subnets) + postfix (только локальная почта, алиас root → `ROOTEMAIL`) + tftp-hpa (PXE) + net-snmp + nmap. Сеть — мост br0 поверх eth0. |
 | `xeon` | Железо-надстройка для сервера на Xeon E5450 (8 ГБ RAM): tmpfs сборки урезан до 4G, тяжёлые пакеты (qtwebengine, firefox, gcc, rust…) собираются на диске через `package.env`, nouveau и coretemp в ядре, `VIDEO_CARDS="nouveau"`. Система ставится строго на SSD (невращающийся диск), как бы BIOS ни пронумеровал диски. HDD становится data-диском (см. ниже). Создаёт пользователя `sam` (wheel+sudo, ставит `app-admin/sudo`). Комбинировать: `minimal,xeon`. |
+| `vps` | Надстройка под KVM-VPS (VirtFusion и т.п.): вложенная виртуализация (KVM-хост на AMD — `CONFIG_KVM_AMD`, vhost/tun/bridge), явно включённый virtio-guest транспорт (диск/сеть/консоль), serial-консоль в GRUB+inittab для консоли провайдера, пользователь `sam` (wheel+sudo). Сеть — DHCP по умолчанию; статический IP через `VPS_IP`/`VPS_GW` (см. ниже). Система ставится на автодетект-диск (`nvme0n1`→`vda`→`sda`). qemu/libvirt не ставятся (долгая сборка) — ядро готово, доставить вручную. Комбинировать: `minimal,vps`. |
 | `workstation` | Реплика основной системы: профиль desktop/plasma, Plasma 6 + NVIDIA/CUDA, NetworkManager, docker/libvirt/samba, Java/Haskell, медиастек. World-файл и конфиг portage основной системы лежат в `presets/workstation.d/` и копируются в систему хуком. `-march=native` вместо skylake, российские зеркала, `ACCEPT_LICENSE="*"`. ccache/distcc сознательно не переносятся (настройка под хост). |
 | `kde` | Лёгкая GUI-надстройка: профиль desktop/plasma, plasma-meta + kdecore-meta + sddm + NetworkManager. Для QEMU сама ставит `VIDEO_CARDS="virtio"`. Комбинировать последним: `minimal,kde`, `minimal,xeon,kde`. |
 
@@ -70,6 +71,48 @@ ext4-раздел с меткой `data`, в fstab монтируется в `/s
 `datadev=none` в kernel cmdline) — не трогать второй диск вообще.
 Авто-выбор: первый несъёмный диск, не являющийся системным. Сама система
 при этом ставится на SSD — пресет выбирает невращающийся диск под `IDEV`.
+
+## Пресет `vps` (KVM-VPS, VirtFusion)
+
+Роль-надстройка под виртуалку у провайдера (KVM/libvirt, панель VirtFusion).
+Комбинируется с базой: `PRESET="minimal,vps"`.
+
+Что делает:
+
+- **Вложенная виртуализация**: в ядро добавлены KVM-хост (`CONFIG_KVM`,
+  `CONFIG_KVM_AMD=m` под Ryzen; `KVM_INTEL=m` тоже — образ загрузится и на
+  Intel-хосте), `vhost`/`vhost_net`, `tun`, `bridge`. Userland qemu/libvirt
+  **не ставится** (часы сборки) — ядро готово, при надобности:
+  `emerge app-emulation/qemu app-emulation/libvirt`.
+- **virtio-guest транспорт** прописан явно (`VIRTIO_PCI`, `SCSI_VIRTIO`,
+  `HW_RANDOM_VIRTIO`, `VIRTIO_CONSOLE`, `VIRTIO_BALLOON`…) — на KVM-VPS без
+  `VIRTIO_PCI` не будет ни диска, ни сети.
+- **Serial-консоль** (`console=ttyS0,115200`) в GRUB и getty в inittab —
+  чтобы работала консоль провайдера (в т.ч. когда ISO собран без `auto`).
+- Пользователь `sam` (wheel+sudo). На headless-VPS без запечённого
+  ssh-ключа root по ssh запрещён — заходить юзером `sam` или запечь ключ.
+
+**Диск**: автодетект движка (`nvme0n1`→`vda`→`sda`) — неважно, как провайдер
+отдаёт 200 ГБ (virtio-blk/scsi/эмуляция NVMe).
+
+**Сеть**: по умолчанию DHCP на eth0 (большинство VirtFusion-провайдеров
+выдают IP по DHCP). Для статики задать при сборке ISO CIDR-адрес и шлюз —
+`gentoocd_unpack.sh` запекает `VPS_IP`/`VPS_GW`/`VPS_DNS` в CD, так что они
+переживают автоустановку:
+
+```bash
+VPS_IP=203.0.113.10/24 VPS_GW=203.0.113.1 \
+  SET_PASS='МойПароль' sh gentoocd_unpack.sh --preset minimal,vps
+```
+
+`VPS_DNS` по умолчанию `1.1.1.1 8.8.8.8` (переопределить списком через пробел).
+
+**Установка на VPS** (VirtFusion): загрузить ISO с образа/через панель,
+в VNC-консоли пройти установку. Для полностью автоматической:
+`sh gentoocd_unpack.sh auto --preset minimal,vps setupdonehalt` — установщик
+отработает сам и **остановится** (`halt`); после этого в панели отключить ISO
+и переключить загрузку на диск (иначе с примонтированным ISO будет цикл
+переустановки). Без `setupdonehalt` система после установки перезагрузится.
 
 ## Интерфейс пресета
 
