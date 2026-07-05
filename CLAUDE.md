@@ -93,11 +93,14 @@ virtio-guest транспорт (VIRTIO_PCI и пр.). Serial-консоль ф�
 vps.chroot.sh (grub+inittab) — работает и на non-auto ISO. Юзер `sam`.
 Сеть: DHCP по умолчанию, статика через VPS_IP/VPS_GW/VPS_DNS — эти
 переменные gentoocd_unpack.sh запекает в CD (как SET_PASS) и прокидывает
-через su, чтобы пережить автоустановку. Диск — автодетект. **В QEMU не
-прогнан**, только синтаксис/смоук.
+через su, чтобы пережить автоустановку. Диск — автодетект.
+**Подтверждён в QEMU 2026-07-05**: virtio-загрузка (VIRTIO_PCI вкомпилен),
+serial-консоль в cmdline, CONFIG_KVM=y, key-only ssh (root по ключу зашёл,
+парольный root закрыт), юзер `sam` с `(ALL:ALL) ALL` sudo. Готов к заливке
+на боевой VPS.
 
 **Незакрытое:**
-- Прогон `vps`-пресета (в QEMU или сразу на боевом VPS).
+- Установка `vps` на боевой VPS (VirtFusion) — прогон в QEMU пройден.
 - На новых minimal CD нет sntp и file — варнинги в логе; заменить
   sntp на chrony-вызов для реального железа.
 - Прогоны kde/workstation-пресетов в QEMU.
