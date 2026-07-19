@@ -148,9 +148,20 @@ distfiles с gentoo.org (медленно) — добавлен вывод `GENT
 в CD. Требует пересборки ISO. Обходной путь на текущей установке: в chroot-shell
 прописать resolv.conf + `GENTOO_MIRRORS` в make.conf, `emerge` 2 пакета, exit.
 
+2026-07-19 (5-я итерация): установка шла 30+ мин (548 МБ), потом снова
+`Temporary failure in name resolution`. Причина по `ifconfig`: у eth0 **пропал
+IPv4** (остался только fe80::, MTU 1448 сохранился) — `dhcpcd` в цикле
+DHCP-ретраев сбрасывает наш статический адрес. addon ставил статику один раз.
+Фикс: в addon добавлен **detached-сторож** (`setsid`), который каждые 10с
+проверяет наличие `inet` на eth0 и при пропаже `pkill dhcpcd` + переставляет
+addr/mtu/onlink-route/resolv.conf. Переживает вход в chroot (общий netns) и
+всю длинную emerge/kernel-фазу. Требует пересборки ISO. Обход на текущем
+прогоне: тот же `setsid`-сторож руками в chroot-shell.
+
 **Незакрытое:**
 - Переустановка на боевой VPS новым ISO (полный набор: VPS_IP/GW/DNS/MTU +
-  onlink + ретраи + DISTMIRROR=yandex + resolv.conf-fix + GENTOO_MIRRORS).
+  onlink + MTU + ретраи + DISTMIRROR=yandex + resolv.conf-fix + GENTOO_MIRRORS
+  + сторож статики).
 - Косметика: sntp отсутствует на новом CD (варнинг), заменить на chrony.
 - 2026-07-19: VirtFusion монтирует boot-ISO как read-only /dev/sda → движок
   (autodetect nvme0n1→vda→sda) выбирал болванку, fdisk падал "Read-only file

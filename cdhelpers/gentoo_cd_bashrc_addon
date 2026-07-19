@@ -31,6 +31,22 @@ then
     : > /etc/resolv.conf
     for _ns in ${VPS_DNS}; do echo "nameserver $_ns" >> /etc/resolv.conf; done
     echo "vps: live NIC configured statically:"; ip addr show eth0; ip route
+    # Keep it up: some providers' dhcpcd retry cycles flush the static address
+    # mid-install (seen after ~30 min / hundreds of MB). A detached watchdog
+    # re-asserts address + route + resolv.conf whenever the v4 addr disappears,
+    # so the long emerge/kernel phase doesn't lose the network. setsid detaches
+    # it from this shell so it survives into the install.
+    VPS_IP="$VPS_IP" VPS_GW="${VPS_GW:-}" VPS_MTU="${VPS_MTU:-}" VPS_DNS="$VPS_DNS" \
+      setsid sh -c 'while :; do
+        ip -4 addr show eth0 2>/dev/null | grep -q "inet " || {
+          pkill dhcpcd 2>/dev/null
+          ip addr add "$VPS_IP" dev eth0 2>/dev/null
+          [ -n "$VPS_MTU" ] && ip link set eth0 mtu "$VPS_MTU"
+          [ -n "$VPS_GW" ] && ip route replace default via "$VPS_GW" dev eth0 onlink
+          grep -q "^nameserver" /etc/resolv.conf 2>/dev/null || { for n in $VPS_DNS; do echo "nameserver $n"; done > /etc/resolv.conf; }
+        }
+        sleep 10
+      done' >/dev/null 2>&1 &
   else
     (ps aux | grep -q [d]hcp) || (ip link set eth0 up && sleep 2 && dhcpcd)
   fi
