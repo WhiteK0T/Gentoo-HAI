@@ -174,21 +174,13 @@ GENTOO_MIRRORS=yandex.
 **vps-пресет готов и подтверждён из коробки.**
 
 **Незакрытое (vps закрыт):**
-- Косметика движка (не только vps): sntp отсутствует на новом CD (варнинг),
-  заменить на chrony; обрезанный /var/log/hai-install.log.
-- Прогоны kde/workstation в QEMU; установка на реальный Xeon.
-- Косметика: sntp отсутствует на новом CD (варнинг), заменить на chrony.
-- 2026-07-19: VirtFusion монтирует boot-ISO как read-only /dev/sda → движок
-  (autodetect nvme0n1→vda→sda) выбирал болванку, fdisk падал "Read-only file
-  system". Пресет vps теперь сам пиннит IDEV = первый ПИШУЩИЙ (ro=0) несъёмный
-  диск, пропуская ISO/cd/loop/ram (реальный NVMe = virtio /dev/vda). Нужна
-  пересборка ISO.
-- На новых minimal CD нет sntp и file — варнинги в логе; заменить
-  sntp на chrony-вызов для реального железа.
 - Прогоны kde/workstation-пресетов в QEMU.
 - Установка на реальный Xeon-сервер (боевой ISO, без setupdonehalt/auto).
-- Косметика: /var/log/hai-install.log сохраняется обрезанным (только
-  хвост после chroot); диагностировать по install-run.log при случае.
+
+Косметика закрыта (2026-07-20): варнинг `sntp: command not found` на новом
+livecd убран — вызовы sntp в live-контексте (install.sh:147, addon) обёрнуты в
+`command -v` c fallback на chronyd/no-op (в chroot и кроне системы sntp есть из
+ntp — не трогали). Обрезка /var/log/hai-install.log — вылечена.
 
 ## Как тестировать
 

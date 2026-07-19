@@ -74,9 +74,9 @@ then
     sleep 2
     ip a
   done
-  # Try to update to a correct system time
-  chronyd -q 'server ntp.se iburst' &
-  sntp -S ntp.se &
+  # Try to update to a correct system time. chronyd steps the clock and exits;
+  # no sntp fallback here since the minimal livecd doesn't ship it.
+  command -v chronyd >/dev/null 2>&1 && chronyd -q 'server ntp.se iburst' &
   if [ ! -f g-install.sh ]; then
     wget https://raw.githubusercontent.com/ASoft-se/Gentoo-HAI/master/install.sh? -O g-install.sh
     echo We just downloaded g-install.sh that can be used to make a install...

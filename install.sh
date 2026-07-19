@@ -142,9 +142,18 @@ grep -qw nobinpkg /proc/cmdline && GETBINPKG=no
 set -x -u
 # network fallback for files not found locally/on the cd; points to our fork
 GHBASEURL="https://raw.githubusercontent.com/WhiteK0T/Gentoo-HAI/refs/heads/presets"
-# Try to update to a correct system time
+# Try to update to a correct system time. The minimal livecd may ship neither
+# sntp (net-misc/ntp) nor chronyd; use whichever exists (no "command not found"
+# noise), with a no-op fallback so pid_ntp stays a valid job for the
+# `wait $pid_ntp` further down.
 touch /var/db/ntp-kod
-sntp -S $NTPSERVER &
+if command -v sntp >/dev/null 2>&1; then
+  sntp -S $NTPSERVER &
+elif command -v chronyd >/dev/null 2>&1; then
+  chronyd -q "server $NTPSERVER iburst" >/dev/null 2>&1 &
+else
+  : &
+fi
 pid_ntp=$!
 
 [ -d /sys/firmware/efi ] && PLATFORM=efi || PLATFORM=pcbios
