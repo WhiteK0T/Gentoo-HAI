@@ -125,8 +125,23 @@ serial-консоль в cmdline, CONFIG_KVM=y, key-only ssh (root по ключ
 запекается в CD (gentoocd_unpack.sh). **На боевом VPS с новым ISO ещё не
 переставлено** (сейчас там Debian).
 
+2026-07-19 (3-я итерация): сеть+диск прошли, stage3 и снапшот portage
+качаются, но большая параллельная загрузка на скрабленном канале ползла
+~0.4 МБ/с и оборвалась `curl (56) Recv failure: Connection timed out` → шаг
+упал в `|| bash`. Фикс: все curl-загрузки движка (install.sh стр.272,
+portagehelper стр.20/51) получили ретраи с докачкой:
+`--retry 10 --retry-delay 5 --retry-all-errors --connect-timeout 30
+--speed-limit 1000 --speed-time 120` (+ уже был `-C -`). Захардкоженный
+SHA512 portagehelper.sh в install.sh обновлён синхронно (→5e7416ac...).
+Добавлено запекание `DISTMIRROR` в CD (gentoocd_unpack.sh) — для RU-VPS
+`DISTMIRROR=https://mirror.yandex.ru/gentoo-distfiles`. Требует пересборки ISO.
+
 **Незакрытое:**
-- Переустановка на боевой VPS новым ISO (VPS_IP/GW/DNS/MTU + onlink).
+- Переустановка на боевой VPS новым ISO (VPS_IP/GW/DNS/MTU + onlink +
+  ретраи + при желании DISTMIRROR=yandex).
+- Возможный след. затык: emerge-фаза тоже качает (distfiles/binhost).
+  Если ползёт/рвётся — GETBINPKG=no (сборка из исходников, Ryzen быстрый)
+  или GENTOO_MIRRORS на RU-зеркало.
 - 2026-07-19: VirtFusion монтирует boot-ISO как read-only /dev/sda → движок
   (autodetect nvme0n1→vda→sda) выбирал болванку, fdisk падал "Read-only file
   system". Пресет vps теперь сам пиннит IDEV = первый ПИШУЩИЙ (ro=0) несъёмный

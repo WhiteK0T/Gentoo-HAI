@@ -257,7 +257,7 @@ cd /mnt/gentoo || exit 1
 #cleanup in case of previous try...
 rm -f stage3-*.tar.bz2 stage3-*.tar.xz 2>/dev/null
 [ -f portagehelper.sh ] || curl -L --remote-name-all ${GHBASEURL}/portagehelper.sh -O
-sha512sum -c <<<"fc4727ec899d46b53637917bf6fe69d51645d28d1fd2cd10bd989aa0787af8fc236bcc517d83e0ee575a15f70a641c597000cf53fc25039e3caec9690848c152  portagehelper.sh" || bash
+sha512sum -c <<<"5e7416ac55c492aa5c07a106b9ef4178973407d6fa91221f319df7f9e2539f4e8bd6556ba14efcd10919d6fbfda6a635ece3392c656185eb91f0e8af6d24fcc6  portagehelper.sh" || bash
 . ./portagehelper.sh || bash
 DISTBASE=${DISTMIRROR}/releases/amd64/autobuilds/current-stage3-amd64-openrc/
 ensure_key_and_snap_source || bash
@@ -269,7 +269,7 @@ update_snapshot &
 FILE=$(curl -q $DISTBASE --output - | grep -o -E 'stage3-amd64-openrc-\w*\.tar\.xz' | sort -r | head -1)
 [ -z "$FILE" ] && echo -e "\e[91mNo stage3 found on $DISTBASE\e[0m" && exit 1
 echo -e "\e[93mdownload latest stage file $FILE\e[0m"
-curl -L -C - --remote-name-all --parallel-immediate --parallel \
+curl -L -C - --retry 10 --retry-delay 5 --retry-all-errors --connect-timeout 30 --speed-limit 1000 --speed-time 120 --remote-name-all --parallel-immediate --parallel \
   $DISTBASE$FILE $DISTBASE$FILE.DIGESTS $DISTBASE$FILE.asc || bash
 
 gpg --output $FILE.DIGESTS.verified --verify $FILE.DIGESTS && rm $FILE.DIGESTS

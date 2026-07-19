@@ -17,7 +17,7 @@ ensure_key_and_snap_source() {
   #https://github.com/ASoft-se/Gentoo-HAI/issues/72#issuecomment-2294998781
   shaurl=${DISTMIRROR}/snapshots/squashfs/sha512sum.txt
   [ "${1:-x}" == "nosnap" ] && shaurl=
-  curl -L -C - --remote-name-all --parallel-immediate --parallel \
+  curl -L -C - --retry 10 --retry-delay 5 --retry-all-errors --connect-timeout 30 --speed-limit 1000 --speed-time 120 --remote-name-all --parallel-immediate --parallel \
     https://qa-reports.gentoo.org/output/service-keys.gpg \
     $shaurl || return 1
 
@@ -48,7 +48,7 @@ get_existing_target() {
 update_snapshot() {
   [ -z "$SNAPSHOT" ] && return 1
   echo -e "\e[93mSnapshot  $SNAPSHOT ...\nExpecting SHA512 $EXPECTED512 ...\e[0m"
-  curl -C - --remote-name-all "${DISTMIRROR}/snapshots/squashfs/$SNAPSHOT" || return 1
+  curl -C - --retry 10 --retry-delay 5 --retry-all-errors --connect-timeout 30 --speed-limit 1000 --speed-time 120 --remote-name-all "${DISTMIRROR}/snapshots/squashfs/$SNAPSHOT" || return 1
   snapshot512=$(sha512sum "$SNAPSHOT" | awk '{print $1}')
 
   echo -e -n "\e[93mSnapshot  SHA512 $snapshot512\e[0m"

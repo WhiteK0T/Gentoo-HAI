@@ -125,6 +125,20 @@ VPS_IP=89.106.89.196/28 VPS_GW=11.0.0.1 VPS_DNS="1.1.1.1 1.0.0.1" VPS_MTU=1448 \
 Значения `VPS_IP`/`VPS_GW`/`VPS_MTU` берутся из панели провайдера либо из
 вывода `ip addr` / `ip route` / `ip link` уже работающей на этом VPS ОС.
 
+**Зеркало** (`DISTMIRROR`): stage3 и снапшот portage движок тянет с
+`distfiles.gentoo.org`. С RU-VPS путь до него бывает медленным/рвётся —
+укажи ближе, тоже запекается в CD:
+
+```bash
+DISTMIRROR=https://mirror.yandex.ru/gentoo-distfiles VPS_IP=... VPS_MTU=1448 \
+  SET_PASS=... sh gentoocd_unpack.sh --preset minimal,vps setupdonehalt
+```
+
+Все загрузки движка (`install.sh`/`portagehelper.sh`) теперь идут с
+ретраями и докачкой (`curl --retry 10 --retry-all-errors -C -` + обрыв
+зависшего соединения через `--speed-time`), так что единичный таймаут на
+скрабленном канале больше не роняет установку в rescue-shell.
+
 **Установка на VPS** (VirtFusion): загрузить ISO с образа/через панель,
 в VNC-консоли пройти установку. Для полностью автоматической:
 `sh gentoocd_unpack.sh auto --preset minimal,vps setupdonehalt` — установщик
