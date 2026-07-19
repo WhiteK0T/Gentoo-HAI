@@ -46,7 +46,11 @@ then
           grep -q "^nameserver" /etc/resolv.conf 2>/dev/null || { for n in $VPS_DNS; do echo "nameserver $n"; done > /etc/resolv.conf; }
         }
         sleep 10
-      done' >/dev/null 2>&1 &
+      done' </dev/null >/dev/null 2>&1 &
+    # detach the watchdog from this shell's job table, else the addon's final
+    # `wait` (for sshd/chronyd) would block forever on this infinite loop and
+    # the install would never start. (busybox setsid doesn't double-fork.)
+    disown 2>/dev/null || true
   else
     (ps aux | grep -q [d]hcp) || (ip link set eth0 up && sleep 2 && dhcpcd)
   fi
