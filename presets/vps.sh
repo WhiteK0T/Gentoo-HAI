@@ -10,23 +10,56 @@
 #   so it works whether the provider exposes the 200 GB as virtio-blk,
 #   virtio-scsi or emulated NVMe. Nothing to set here for the disk.
 #
-# Networking: DHCP on eth0 by default (engine default — most VirtFusion
-# providers hand the IP out over DHCP). For a STATIC address, pass a CIDR
-# in VPS_IP (and a gateway in VPS_GW) at ISO-build time; gentoocd_unpack.sh
-# bakes VPS_IP/VPS_GW/VPS_DNS into the CD so they survive an unattended
-# install:
-#   VPS_IP=203.0.113.10/24 VPS_GW=203.0.113.1 \
-#     sh gentoocd_unpack.sh --preset minimal,vps
-# VPS_DNS defaults to public resolvers; override with a space-separated list.
+# Networking: DHCP on eth0 by default (engine default — many VirtFusion
+# providers hand the IP out over DHCP). For a STATIC address, pass a CIDR in
+# VPS_IP (plus VPS_GW / VPS_DNS / VPS_MTU) at ISO-build time; gentoocd_unpack.sh
+# bakes them into the CD so they survive an unattended install:
+#   VPS_IP=89.106.89.196/28 VPS_GW=11.0.0.1 VPS_DNS="1.1.1.1 1.0.0.1" \
+#     VPS_MTU=1448  sh gentoocd_unpack.sh --preset minimal,vps
+#
+# Three gotchas seen on real DDoS-scrubbed VirtFusion hosts, all handled here:
+#   * off-link gateway — the gateway (e.g. 11.0.0.1) is NOT inside the IP's
+#     subnet. A plain "default via GW" fails ("nexthop has invalid gateway");
+#     the 'onlink' flag tells the kernel the gateway is reachable on the link.
+#   * reduced MTU — traffic is tunnelled, so the real MTU is <1500 (often
+#     1448/1400). With 1500, small packets pass but large ones (stage3 fetch,
+#     TLS) black-hole and the install hangs. Set VPS_MTU to the provider's MTU.
+#   * static-only — the LIVE installer itself has no DHCP here, so the block
+#     below also brings the installer's own NIC up statically *before* any
+#     download, otherwise the unattended install stalls fetching stage3.
+# VPS_DNS defaults to Cloudflare; override with a space-separated list.
 
 if [ -n "${VPS_IP:-}" ]; then
-  : "${VPS_DNS:=1.1.1.1 8.8.8.8}"
+  : "${VPS_DNS:=1.1.1.1 1.0.0.1}"
+
+  # --- config for the INSTALLED system (/etc/conf.d/net, netifrc) ---
   NETCONF="# static config baked by the vps preset (net.ifnames=0 -> eth0)
 config_eth0=\"${VPS_IP}\""
+  # onlink: gateway may sit outside the subnet on scrubbed/tunnelled providers
   [ -n "${VPS_GW:-}" ] && NETCONF="${NETCONF}
-routes_eth0=\"default via ${VPS_GW}\""
+routes_eth0=\"default via ${VPS_GW} onlink\""
   NETCONF="${NETCONF}
 dns_servers_eth0=\"${VPS_DNS}\""
+  [ -n "${VPS_MTU:-}" ] && NETCONF="${NETCONF}
+mtu_eth0=\"${VPS_MTU}\""
+
+  # --- bring the LIVE installer NIC up now, before the engine downloads
+  # stage3/portage. Skip if something already gave us a default route (e.g.
+  # DHCP worked). net.ifnames=0 on the live cmdline -> the NIC is eth0, but
+  # detect it anyway and fall back to eth0. This runs on the LiveCD only
+  # (*.sh is sourced pre-chroot); the .chroot.sh hook handles the rest.
+  if ! ip route 2>/dev/null | grep -q '^default'; then
+    _ifc=$(ip -o link 2>/dev/null | awk -F': ' '$2!="lo"{sub(/@.*/,"",$2); print $2; exit}')
+    _ifc=${_ifc:-eth0}
+    echo "vps: no default route — configuring ${_ifc} statically for the installer"
+    ip addr add "${VPS_IP}" dev "$_ifc" 2>/dev/null
+    [ -n "${VPS_MTU:-}" ] && ip link set "$_ifc" mtu "${VPS_MTU}"
+    ip link set "$_ifc" up
+    [ -n "${VPS_GW:-}" ] && ip route replace default via "${VPS_GW}" dev "$_ifc" onlink
+    : > /etc/resolv.conf
+    for _ns in ${VPS_DNS}; do echo "nameserver $_ns" >> /etc/resolv.conf; done
+    ip route
+  fi
 fi
 
 # sudo for the login user (see vps.chroot.sh)
