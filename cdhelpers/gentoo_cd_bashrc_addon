@@ -14,13 +14,43 @@ then
   SET_PASS=${SET_PASS:-password}
   echo "root:${SET_PASS}" | chpasswd -c BCRYPT
 
-  (ps aux | grep -q [d]hcp) || (ip link set eth0 up && sleep 2 && dhcpcd)
+  # network: DDoS-scrubbed / static-only providers give NO DHCP, so dhcpcd
+  # just hangs a 169.254.x.x link-local address and the wait loop below spins
+  # forever. If the ISO was baked with VPS_IP (vps preset), configure the live
+  # NIC statically right here, BEFORE the wait loop. onlink covers a gateway
+  # outside the subnet; VPS_MTU covers a tunnel's reduced MTU (else large
+  # packets black-hole and downloads stall).
+  if [ -n "${VPS_IP:-}" ]; then
+    pkill dhcpcd 2>/dev/null
+    ip addr flush dev eth0 2>/dev/null
+    ip link set eth0 up
+    [ -n "${VPS_MTU:-}" ] && ip link set eth0 mtu "${VPS_MTU}"
+    ip addr add "${VPS_IP}" dev eth0 2>/dev/null
+    [ -n "${VPS_GW:-}" ] && ip route replace default via "${VPS_GW}" dev eth0 onlink
+    : "${VPS_DNS:=1.1.1.1 1.0.0.1}"
+    : > /etc/resolv.conf
+    for _ns in ${VPS_DNS}; do echo "nameserver $_ns" >> /etc/resolv.conf; done
+    echo "vps: live NIC configured statically:"; ip addr show eth0; ip route
+  else
+    (ps aux | grep -q [d]hcp) || (ip link set eth0 up && sleep 2 && dhcpcd)
+  fi
   /etc/init.d/sshd start &
   # wait a bit for everything to come up, and oh the (Un)PredictableNetworkInterfaceNames Madness will make sure eth0 above no longer works.
+  _netwait=0
   while : ; do
     # ping does not work in QEMU default network, su use http get instead.
     curl -s raw.githubusercontent.com > /dev/null && break
     ping -c 1 raw.githubusercontent.com && break
+    _netwait=$((_netwait+1))
+    if [ "$_netwait" -ge 30 ]; then
+      echo
+      echo "=== No network after ~60s. Installer cannot fetch stage3. ==="
+      echo "Check:  ip addr ; ip route ; cat /etc/resolv.conf"
+      echo "For a static/DDoS-scrubbed VPS, rebuild the ISO with VPS_IP/VPS_GW/VPS_MTU,"
+      echo "or fix networking here by hand, then type 'exit' to retry and continue."
+      bash
+      _netwait=0
+    fi
     sleep 2
     ip a
   done

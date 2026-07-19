@@ -108,8 +108,17 @@ serial-консоль в cmdline, CONFIG_KVM=y, key-only ssh (root по ключ
      → установка виснет «в начале». Добавлен VPS_MTU (netifrc mtu_eth0 +
      live-NIC).
   3. **Static-only LiveCD**: VPS_IP пишется только в целевую систему, а сам
-     установщик оставался без сети. vps.sh теперь поднимает NIC установщика
-     статикой (addr+mtu+onlink-route+resolv.conf) ДО скачивания stage3.
+     установщик оставался без сети. КЛЮЧЕВОЕ (2026-07-19): подъём статики в
+     vps.sh был БЕСПОЛЕЗЕН — vps.sh сорсится внутри install.sh, а install.sh
+     не стартует, потому что livecd-обвязка `cdhelpers/gentoo_cd_bashrc_addon`
+     сначала крутит бесконечный цикл ожидания сети (curl/ping
+     raw.githubusercontent.com) ПОСЛЕ запуска dhcpcd (который на static-only
+     вешает 169.254.x.x). Фикс перенесён в addon: при заданном VPS_IP он
+     поднимает eth0 статикой (pkill dhcpcd; flush; addr; mtu; onlink-route;
+     resolv.conf) ДО цикла ожидания. В цикл добавлен аварийный выход в shell
+     после ~60с (было — вечный цикл без выхода). vps.sh-подъём оставлен как
+     подстраховка (идемпотентен, пропускается если default route уже есть).
+     Требует ПЕРЕСБОРКИ ISO (addon запекается в squashfs .bashrc).
 Также подтверждён симптом «настройки не сохраняются на диск» = система
 грузилась с примонтированного ISO (LiveCD-оверлей в tmpfs), а не с диска —
 в панели надо отмонтировать ISO и переключить boot на диск. VPS_MTU
