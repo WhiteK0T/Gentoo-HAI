@@ -136,12 +136,22 @@ SHA512 portagehelper.sh в install.sh обновлён синхронно (→5e
 Добавлено запекание `DISTMIRROR` в CD (gentoocd_unpack.sh) — для RU-VPS
 `DISTMIRROR=https://mirror.yandex.ru/gentoo-distfiles`. Требует пересборки ISO.
 
+2026-07-19 (4-я итерация): загрузки с yandex прошли, дошло до emerge в
+chroot — упали net-misc/ntp и app-portage/gentoolkit на СКАЧИВАНИИ исходников:
+`wget: Temporary failure in name resolution` — **в chroot не работал DNS**.
+stage3/снапшот качались ДО chroot (DNS от live-обвязки), а `cp /etc/resolv.conf
+etc` (install.sh) скопировал ПУСТОЙ resolv.conf (на static-only dhcpcd его не
+пишет). Фикс: после копирования, если нет `^nameserver`, движок пишет
+VPS_DNS (или 1.1.1.1/1.0.0.1) в chroot-resolv.conf. Также emerge тянул
+distfiles с gentoo.org (медленно) — добавлен вывод `GENTOO_MIRRORS` в make.conf,
+наследуется из непустого DISTMIRROR (то же зеркало, что и stage3), + запекается
+в CD. Требует пересборки ISO. Обходной путь на текущей установке: в chroot-shell
+прописать resolv.conf + `GENTOO_MIRRORS` в make.conf, `emerge` 2 пакета, exit.
+
 **Незакрытое:**
-- Переустановка на боевой VPS новым ISO (VPS_IP/GW/DNS/MTU + onlink +
-  ретраи + при желании DISTMIRROR=yandex).
-- Возможный след. затык: emerge-фаза тоже качает (distfiles/binhost).
-  Если ползёт/рвётся — GETBINPKG=no (сборка из исходников, Ryzen быстрый)
-  или GENTOO_MIRRORS на RU-зеркало.
+- Переустановка на боевой VPS новым ISO (полный набор: VPS_IP/GW/DNS/MTU +
+  onlink + ретраи + DISTMIRROR=yandex + resolv.conf-fix + GENTOO_MIRRORS).
+- Косметика: sntp отсутствует на новом CD (варнинг), заменить на chrony.
 - 2026-07-19: VirtFusion монтирует boot-ISO как read-only /dev/sda → движок
   (autodetect nvme0n1→vda→sda) выбирал болванку, fdisk падал "Read-only file
   system". Пресет vps теперь сам пиннит IDEV = первый ПИШУЩИЙ (ro=0) несъёмный

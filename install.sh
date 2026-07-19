@@ -285,7 +285,17 @@ time tar xpf $FILE --xattrs-include='*.*' --numeric-owner && rm $FILE
 wait || exit 1
 mkdir root/.gnupg; chmod 700 root/.gnupg; cp ~/.gnupg/trustdb.gpg root/.gnupg/
 mount_current_snapshot || bash
-cp /etc/resolv.conf etc
+# DNS for the chroot's emerge fetches. Copy the live resolv.conf, but it can be
+# empty (e.g. static-only providers where dhcpcd never wrote one) -- then wget
+# inside the chroot fails "Temporary failure in name resolution" and every
+# source download dies. Guarantee at least one usable nameserver (prefer the
+# baked VPS_DNS, else public resolvers).
+cp /etc/resolv.conf etc 2>/dev/null
+if ! grep -q '^nameserver' etc/resolv.conf 2>/dev/null; then
+  : "${VPS_DNS:=1.1.1.1 1.0.0.1}"
+  : > etc/resolv.conf
+  for ns in ${VPS_DNS}; do echo "nameserver $ns" >> etc/resolv.conf; done
+fi
 # make sure we are done with root unpack...
 
 echo "# Set to the hostname of this machine
@@ -325,6 +335,13 @@ BINPKGOPT=""
 echo "EMERGE_DEFAULT_OPTS=\"\${EMERGE_DEFAULT_OPTS} ${BINPKGOPT}\"" >> $MAKECONF
 echo "FEATURES=\"parallel-fetch buildpkg\"" >> $MAKECONF
 echo "USE=\"\${USE} ${BASEUSE} ${PRESET_USE}\"" >> $MAKECONF
+# emerge distfiles mirror: honour an explicit GENTOO_MIRRORS, else reuse a
+# non-default DISTMIRROR (a closer mirror also carries /distfiles). This makes
+# the in-chroot emerges pull sources from the same fast mirror as stage3, not
+# just distfiles.gentoo.org (slow/flaky on some scrubbed VPS links).
+GMIRROR="${GENTOO_MIRRORS:-}"
+[ -z "$GMIRROR" ] && [ -n "${DISTMIRROR:-}" ] && [ "${DISTMIRROR}" != "https://distfiles.gentoo.org" ] && GMIRROR="${DISTMIRROR}"
+[ -n "$GMIRROR" ] && echo "GENTOO_MIRRORS=\"${GMIRROR}\"" >> $MAKECONF
 
 grep -q autoinstall /proc/cmdline || nano $MAKECONF
 
