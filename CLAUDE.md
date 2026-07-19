@@ -127,6 +127,11 @@ serial-консоль в cmdline, CONFIG_KVM=y, key-only ssh (root по ключ
 
 **Незакрытое:**
 - Переустановка на боевой VPS новым ISO (VPS_IP/GW/DNS/MTU + onlink).
+- 2026-07-19: VirtFusion монтирует boot-ISO как read-only /dev/sda → движок
+  (autodetect nvme0n1→vda→sda) выбирал болванку, fdisk падал "Read-only file
+  system". Пресет vps теперь сам пиннит IDEV = первый ПИШУЩИЙ (ro=0) несъёмный
+  диск, пропуская ISO/cd/loop/ram (реальный NVMe = virtio /dev/vda). Нужна
+  пересборка ISO.
 - На новых minimal CD нет sntp и file — варнинги в логе; заменить
   sntp на chrony-вызов для реального железа.
 - Прогоны kde/workstation-пресетов в QEMU.

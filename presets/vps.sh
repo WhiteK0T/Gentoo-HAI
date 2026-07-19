@@ -6,9 +6,12 @@
 #   serial/VNC console. This is a role add-on — combine with the base:
 #       PRESET="minimal,vps"
 #
-#   The system disk is auto-detected by the engine (nvme0n1 -> vda -> sda),
-#   so it works whether the provider exposes the 200 GB as virtio-blk,
-#   virtio-scsi or emulated NVMe. Nothing to set here for the disk.
+#   Install target: the engine's autodetect (nvme0n1 -> vda -> sda) is wrong
+#   on VirtFusion, which attaches the BOOT ISO as a read-only /dev/sda. The
+#   engine then falls through to that read-only sda and fdisk dies with
+#   "Read-only file system". So the block below pins IDEV to the first
+#   *writable*, non-removable real disk, skipping the ISO (ro=1) and any
+#   cd/loop/ram device. Override with IDEV=/dev/vdX if ever needed.
 #
 # Networking: DHCP on eth0 by default (engine default — many VirtFusion
 # providers hand the IP out over DHCP). For a STATIC address, pass a CIDR in
@@ -28,6 +31,25 @@
 #     below also brings the installer's own NIC up statically *before* any
 #     download, otherwise the unattended install stalls fetching stage3.
 # VPS_DNS defaults to Cloudflare; override with a space-separated list.
+
+# --- install target: first writable, non-removable real disk ---
+# VirtFusion attaches the boot ISO as a read-only /dev/sda; the engine's
+# nvme0n1->vda->sda autodetect then lands on it and fdisk fails. Pin IDEV to
+# the first disk that is writable (ro=0), non-removable, and not a cd/loop/ram
+# device. Prefer virtio (vd*) and nvme over sd*. Set at source time, before the
+# engine's own IDEV=${IDEV:-...} defaults, so this wins.
+if [ -z "${IDEV:-}" ]; then
+  for _d in /sys/block/vd* /sys/block/nvme* /sys/block/sd*; do
+    [ -e "$_d" ] || continue
+    _dev=${_d##*/}
+    case $_dev in sr*|loop*|ram*|fd*) continue;; esac
+    [ "$(cat "$_d/removable" 2>/dev/null)" = "1" ] && continue
+    [ "$(cat "$_d/ro" 2>/dev/null)" = "1" ] && continue   # skip the read-only ISO
+    IDEV=/dev/$_dev
+    break
+  done
+  [ -n "${IDEV:-}" ] && echo "vps: install target = $IDEV (writable, non-removable)"
+fi
 
 if [ -n "${VPS_IP:-}" ]; then
   : "${VPS_DNS:=1.1.1.1 1.0.0.1}"
